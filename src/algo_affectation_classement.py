@@ -1,9 +1,8 @@
 import logging
 import pandas as pd
 import numpy as np
-import ast
 
-from extract_data import charger_excels
+from excel_en_dataframe import charger_excels
 from generateur_donnees_fictives import generer_dataframe_univ, generer_df_choix_etudiants
 
 # Configuration de base du logging

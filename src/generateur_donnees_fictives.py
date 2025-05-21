@@ -44,7 +44,7 @@ def generer_dataframe_univ(n):
 
 
 
-def generer_df_choix_etudiants(n):
+def generer_df_choix_etudiants(n, list_univ):
     """
     Génère un DataFrame contenant les choix d'université de n étudiants pour trois semestres.
 
@@ -70,8 +70,6 @@ def generer_df_choix_etudiants(n):
     if n < 1:
         raise ValueError("Le nombre d'étudiants doit être au moins 1.")
     
-    # Codes Univ fixes (AAAA à ZZZZ)
-    codes_univ = [char * 4 for char in string.ascii_uppercase]  # 26 codes
 
     data = {
         "Id Etudiant": [],
@@ -84,7 +82,7 @@ def generer_df_choix_etudiants(n):
         data["Id Etudiant"].append(i)
         
         for semestre in ["Choix S8", "Choix S9", "Choix S10"]:
-            choix = random.sample(codes_univ, 5)  # 5 codes différents, ordre aléatoire
+            choix = random.sample(list_univ, 5)  # 5 codes différents, ordre aléatoire
             data[semestre].append(", ".join(choix))
 
     return pd.DataFrame(data)

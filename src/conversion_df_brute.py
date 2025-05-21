@@ -1,9 +1,16 @@
 import pandas as pd
+import numpy as np
 from excel_en_dataframe import charger_excels
 
-dataframes_test = charger_excels("data")
-
 def conversion_df_brute_pour_affectation(dataframes:dict) -> dict:
+    """Converti un dictionnaire composé de 4 dataframe issue des excels (1 sur les étudiants, 3 pour chaque partenaire par semestre) en un dictionnaire de 2 df, celui des univ et celui du choix des étudiants.
+    
+    Args:
+        dataframes: le dictionnaire contenant tous les dataframes issus des excels.
+        
+    Returns:
+        res: Le dictionnaire contenant 2 df, celui des univ et celui du choix des étudiants
+    """
     res = {}
     dict_df_partner = recup_dict_df_partner(dataframes)
     df_partner = fusion_df_partner(dict_df_partner)
@@ -32,7 +39,7 @@ def recup_dict_df_partner(dataframes:dict) -> dict:
     return res
 
 def fusion_df_partner(dict_df:dict):
-    """Fusionne les df du dictionnaire fourni en un seul df avec les colonnes Nom, Places S8, Places S9, Places S10.
+    """Fusionne les df du dictionnaire fourni en un seul df avec les colonnes Nom, Places SX, Places Prises SX, Specialites Compatibles SX.
     
     Keyword arguments:
     df -- Le dictionnaire des dataframes lié au univsersités partenaire, il y en a un par semestre (3)
@@ -41,7 +48,8 @@ def fusion_df_partner(dict_df:dict):
     # On récupère la liste des noms des partenaires dans le premier df
     liste_noms = next(iter(dict_df.values()))["NOM DU PARTENAIRE"].tolist()
     dict_place_semestre = {} # De la forme {"Places S8":[], "Places S9":[], "Places S10":[]}
-
+    dict_spe_compatible_semestre = {} # De la forme {"Specialites Compatibles S8":[], "Specialites Compatibles S9":[], "Specialites Compatibles S10":[]}
+    bonjour
     for key in dict_df: # key = "partner_SX"
         semestre = key.split("_")[-1] # On récupère le semestre
         cle = "Places " + str(semestre)
@@ -51,11 +59,20 @@ def fusion_df_partner(dict_df:dict):
     data = {
         "NOM DU PARTENAIRE": liste_noms,
         "Places S8": dict_place_semestre["Places S8"],
+        "Places Prises S8":0,
+        "Specialites Compatibles S8": np.nan,
         "Places S9": dict_place_semestre["Places S9"],
-        "Places S10": dict_place_semestre["Places S10"]
+        "Places Prises S9":0,
+        "Specialites Compatibles S9": np.nan,
+        "Places S10": dict_place_semestre["Places S10"],
+        "Places Prises S10":0,
+        "Specialites Compatibles S10": np.nan
     }
 
     return pd.DataFrame(data)
 
-test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
-print(test)
+test = True
+if test :
+    dataframes_test = charger_excels("data")
+    test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
+    print(test)

@@ -38,9 +38,9 @@ def charger_excels(dossier: str) -> dict:
 def traiter_excel_partner(chemin):
     return pd.read_excel(chemin, header=2)
  
-display_prints = False
+test = False
 
-if display_prints:
+if test:
     # Chemin du dossier contenant les fichiers Excel
     dossier = r"data"  
 

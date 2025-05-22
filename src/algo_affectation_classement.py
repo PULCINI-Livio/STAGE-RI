@@ -58,7 +58,8 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
         data["Specialite"].append(specialite_choisie)
         for semestre in liste_semestre:
             liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite_choisie)
-            choix = random.sample(liste_univ_compatibles, 5)  # 5 noms différents, ordre aléatoire
+            nb_choix = min(5, len(liste_univ_compatibles))
+            choix = random.sample(liste_univ_compatibles, nb_choix) # 5 noms différents, ordre aléatoire
             data["Choix " + str(semestre)].append("; ".join(choix))
     return pd.DataFrame(data)
 
@@ -152,15 +153,20 @@ def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semest
             df_univ.at[idx, "Places Prises " + str(semestre)] = current + 1
 
 def get_nb_places_disponibles(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
+    res = 0
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
-    return nb_places_total-nb_places_prises
+    if nb_places_total is not None and nb_places_prises is not None:
+        res = nb_places_total-nb_places_prises
+    return res
 
 def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
-    res = 100
+    res = 1.0
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
-    return nb_places_prises/nb_places_total
+    if nb_places_total is not None and nb_places_total != 0:
+        res = nb_places_prises/nb_places_total
+    return res
 
 def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
     """convertit toutes les valeurs d'un colonne d'un df en tuple
@@ -261,7 +267,7 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
 
     # On parcours ligne par ligne le df des étudiants
     for idx, row in df_etudiants.iterrows():
-        for semestre in semestres: 
+        for semestre in semestres:
             attribution_faite = False
             tuple_choix = row["Choix " + str(semestre)] # On récupère le tuple de choix du semestre
             if pd.notna(tuple_choix): # Si le tuple n'est pas vide

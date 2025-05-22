@@ -59,7 +59,7 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
         for semestre in liste_semestre:
             liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite_choisie)
             choix = random.sample(liste_univ_compatibles, 5)  # 5 noms différents, ordre aléatoire
-            data["Choix " + str(semestre)].append(", ".join(choix))
+            data["Choix " + str(semestre)].append("; ".join(choix))
     return pd.DataFrame(data)
 
 def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
@@ -78,13 +78,16 @@ def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str
     int: val
         Le nombre de place affichés à la ligne pour le code univ correspondant
     """
-    
+
     places = df.loc[df["NOM DU PARTENAIRE"] == nom_du_partenaire, "Places "+str(semestre)]
     if places.empty:
+        #print(str(nom_du_partenaire) + " " + semestre + " est vide, on retourne None")
         return None
     val = places.iloc[0]
     if pd.isna(val):
+        #print(str(nom_du_partenaire) + " " + semestre + " isna, on retourne None")
         return None
+    #print(str(nom_du_partenaire) + " " + semestre + " est bon avec " + str(int(places)) + " places")
     return int(val)
 
 def get_nombre_places_prises(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
@@ -125,10 +128,7 @@ def place_est_disponible(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:s
     """
 
     res = False
-    nb_places_total = get_nombre_places_total(df=df_univ, nom_du_partenaire=nom_du_partenaire, semestre=semestre)
-    nb_places_prises = get_nombre_places_prises(df=df_univ, nom_du_partenaire=nom_du_partenaire, semestre=semestre)
-
-    if nb_places_total != None and nb_places_total > nb_places_prises:
+    if get_nb_places_disponibles(df_univ, nom_du_partenaire, semestre) > 0:
         res = True
     return res
 
@@ -154,10 +154,10 @@ def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semest
 def get_nb_places_disponibles(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
-    
     return nb_places_total-nb_places_prises
 
 def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
+    res = 100
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
     return nb_places_prises/nb_places_total
@@ -170,7 +170,7 @@ def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
         colonne: La colonne à traiter
 
     """
-    df[colonne] = df[colonne].apply(lambda x: tuple(map(str.strip, x.split(","))) if pd.notna(x) else x)
+    df[colonne] = df[colonne].apply(lambda x: tuple(map(str.strip, x.split(";"))) if pd.notna(x) else x)
 
 def get_universite_la_moins_remplie(df_univ:pd.DataFrame, choix:tuple|list, semestre:str, calcul_completion:str="Taux") -> str:
     """Retourne un str correspondant à l'université la moins remplie selon la méthode de calcul 
@@ -185,7 +185,7 @@ def get_universite_la_moins_remplie(df_univ:pd.DataFrame, choix:tuple|list, seme
     Returns:
         res: le str de l'université la moins remplie selon la méthode de calcul
     """
-
+    
     univ_la_moins_rempli = choix[0]
     i = 1
     while i < len(choix):
@@ -226,7 +226,6 @@ def get_univ_compatible_la_moins_remplie(df_univ:pd.DataFrame, semestre:str, spe
     Returns:
         res: le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie.
     """
-    
     liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite)
     return get_universite_la_moins_remplie(df_univ, liste_univ_compatibles, semestre, calcul_completion)
 
@@ -237,7 +236,7 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
     Args:
         df_univ: Le dataframe des universités partenaires
         df_etudiants: Le dataframe des choix des étudiants
-        limite_ordre: Le nombre de voeux qui sont ordonnés, exemple : limite_ordre = 3, on traite les 3 premiers voeux, et si il ne sont pas disponibles, on choisi un des autres voeux de manière à maximiser la complétion.
+        limite_ordre: Le nombre de voeux qui sont ordonnés (entre 0 et 5), exemple : limite_ordre = 2, on traite les 2 premiers voeux dans l'ordre, et si il ne sont pas disponibles, on choisi un des autres voeux de manière à maximiser la complétion.
         calcul_completion: Un str qui va donner la méthode de calcule de la complétion, "Taux" calcule selon le rapport entre le total de place disponible et le nombre de places prises et choisi le partenaire avec le taux le plus bas. "Places Prises" regarde seulement combien de places sont prises et choisi ceux avec le moins de places prises.
 
     Returns:
@@ -272,26 +271,32 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
                         if place_est_disponible(df_univ, choix_courant, semestre):
                             choix_final = choix_courant
                             attribution_faite = True
+                            logging.info("l etudiant " + str(row["Id Etudiant"]) + " a une place pour un de ses choix ordonnes")
+                            break
                 # La condition suivante est vrai si pas encore d'attribution et qu'il reste des choix à traiter
                 if not attribution_faite and limite_ordre <= 4: # Si l'attribution n'a pas été faite avec le scénario 1, on passe au scénario 2 avec les voeux restants
+                    tuple_choix = tuple_choix[limite_ordre:] # On ne garde que les choix non ordonnés
                     if len(tuple_choix) < 2: # Si un seul choix restant, pas besoin de comparer les taux de complétion
                         univ_la_moins_remplie = tuple_choix[0]
                     else:
-                        univ_la_moins_remplie = get_universite_la_moins_remplie(choix=tuple_choix[limite_ordre:], semestre=semestre)
+                        univ_la_moins_remplie = get_universite_la_moins_remplie(df_univ, tuple_choix, semestre, "Taux")
                     if place_est_disponible(df_univ, univ_la_moins_remplie, semestre):
-                        choix_final = choix_courant
+                        choix_final = univ_la_moins_remplie
                         attribution_faite = True
+                        logging.info("l etudiant " + str(row["Id Etudiant"]) + " a une place pour un de ses choix non ordonnes")
 
                 elif not attribution_faite: # Si tout les choix ont été rejeté
+                    logging.info("tous les choix de l etudiant " + str(row["Id Etudiant"]) + " ont ete rejete")
                     specialite = row["Specialite"]
+
                     univ_compatible_la_moins_remplie = get_univ_compatible_la_moins_remplie(df_univ, semestre, specialite, calcul_completion)
                     if place_est_disponible(df_univ, univ_compatible_la_moins_remplie, semestre):
-                        choix_final = choix_courant
+                        logging.info("une place est disponible pour l etudiant " + str(row["Id Etudiant"]) + " dans les universites compatible hors de ses choix")
+                        choix_final = univ_compatible_la_moins_remplie
                         attribution_faite = True    
-
-                else:
-                    df_etudiants.at[idx, semestre] = np.nan
-                    logging.info("plus de places disponibles dans aucun des choix pour etudiant " + str(row["Id Etudiant"]))
+                    else:
+                        choix_final = np.nan
+                        logging.info("plus de places disponibles dans aucune des universites pour etudiant " + str(row["Id Etudiant"]))
 
                 if attribution_faite:
                     logging.info(str(get_nb_places_disponibles(df_univ, nom_du_partenaire=choix_final, semestre=semestre)) + " places disponibles pour " + str(choix_final) + " " + str(semestre))
@@ -302,14 +307,20 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
                     logging.info("Incrementation reussie, "+ str(get_nb_places_disponibles(df_univ, nom_du_partenaire=choix_final, semestre=semestre)) + " place(s) restant(es) pour " + str(choix_final) + " " + str(semestre))
             else:
                 logging.info(str(row["Id Etudiant"]) + " n'a pas fait de choix au " + str(semestre))
+    return df_etudiants
+
 test = True
 if test:
     dataframes = charger_excels("data")
     #print(dataframes.keys())
     df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
     print(df_univ)
-    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(20, df_univ)
+    
+    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(300, df_univ)
     print(df_etu_fictif)
-    #df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
-    #print(traitement_scenario_hybride(df_univ, df_etu_fictif, 3, "Taux" ))
+    df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
+    df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 0, "Taux" )
+    #print(df_final)
+    df_univ.to_excel("df_univ.xlsx") 
+    df_final.to_excel("df_final.xlsx") 
     #print(df_univ)

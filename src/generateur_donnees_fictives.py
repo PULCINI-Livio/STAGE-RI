@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import string
 
+
 def generer_dataframe_univ(n):
     """
     Génère un DataFrame contenant les codes universités et le nombre de places disponibles
@@ -57,7 +58,7 @@ def generer_df_choix_etudiants(n, list_univ):
     --------
     DataFrame pandas avec les colonnes :
         - Id Etudiant : identifiant numérique (1 à n)
-        - Choix S8 : 5 codes Univ (ex: "AAAA, ZZZZ, BBBB, DDDD, GGGG")
+        - Choix S8 : 5 noms d'univ
         - Choix S9 : idem
         - Choix S10 : idem
 
@@ -86,5 +87,7 @@ def generer_df_choix_etudiants(n, list_univ):
             data[semestre].append(", ".join(choix))
 
     return pd.DataFrame(data)
+
+
 
 #print(generer_dataframe_univ(26).head())

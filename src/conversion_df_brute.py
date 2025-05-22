@@ -48,6 +48,7 @@ def fusion_df_partner(dict_df:dict):
     """
     # On récupère la liste des noms des partenaires dans le premier df
     liste_noms = next(iter(dict_df.values()))["NOM DU PARTENAIRE"].tolist()
+    liste_noms = [s.rstrip() for s in liste_noms] # On enlève les espaces parasites à la fin des noms.
     dict_place_semestre = {} # De la forme {"Places S8":[], "Places S9":[], "Places S10":[]}
     dict_spe_compatible_semestre = defaultdict(list) # De la forme {"Specialites Compatibles S8":[], "Specialites Compatibles S9":[], "Specialites Compatibles S10":[]}
     liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]

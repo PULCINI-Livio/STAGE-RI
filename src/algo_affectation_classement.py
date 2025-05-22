@@ -2,6 +2,8 @@ import logging
 import random
 import pandas as pd
 import numpy as np
+import time
+import matplotlib.pyplot as plt
 
 from excel_en_dataframe import charger_excels
 from conversion_df_brute import conversion_df_brute_pour_affectation
@@ -233,6 +235,43 @@ def get_univ_compatible_la_moins_remplie(df_univ:pd.DataFrame, semestre:str, spe
     liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite)
     return get_universite_la_moins_remplie(df_univ, liste_univ_compatibles, semestre, calcul_completion)
 
+def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_completion):
+    # Préparer un mapping dynamique des noms
+    col_choix = f"Choix_{semestre}"
+    id_etudiant = getattr(row, "Id_Etudiant", None)
+    tuple_choix = getattr(row, col_choix, None)
+
+    if not tuple_choix or not isinstance(tuple_choix, tuple):
+        logging.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
+        return np.nan
+
+    # Scénario 1 : Vœux ordonnés
+    for i, choix in enumerate(tuple_choix[:limite_ordre]):
+        if place_est_disponible(df_univ, choix, semestre):
+            logging.info(f"{id_etudiant} obtient le choix {choix} (ordre {i+1}) pour le {semestre}")
+            return choix
+
+    # Scénario 2 : Choix restants
+    choix_restants = tuple_choix[limite_ordre:]
+    if choix_restants:
+        if len(choix_restants) == 1:
+            univ_choisie = choix_restants[0]
+        else:
+            univ_choisie = get_universite_la_moins_remplie(df_univ, choix_restants, semestre, calcul_completion)
+        if place_est_disponible(df_univ, univ_choisie, semestre):
+            logging.info(f"{id_etudiant} obtient {univ_choisie} via les choix non ordonnés pour {semestre}")
+            return univ_choisie
+
+    # Scénario 3 : Aucune des options précédentes
+    specialite = getattr(row, "Specialite", None)
+    univ_fallback = get_univ_compatible_la_moins_remplie(df_univ, semestre, specialite, calcul_completion)
+    if place_est_disponible(df_univ, univ_fallback, semestre):
+        logging.info(f"{id_etudiant} affecté par fallback à {univ_fallback} pour {semestre}")
+        return univ_fallback
+
+    logging.info(f"Aucune attribution possible pour {id_etudiant} au {semestre}")
+    return np.nan
+
 def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame, limite_ordre:int=0, calcul_completion:str="Taux"):
     """Retourne un df correspondant aux affectations de chaque étudiant 
     à un seul choix pour les semestres qu'il a choisi selon un scénario hybride entre le classement et la complétion des partenaires.
@@ -248,83 +287,105 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
     à un seul choix pour les semestres qu'il a choisi.
     """
     
-    # Sécurité
-    if limite_ordre > 5:
-        limite_ordre = 5
-    if limite_ordre < 0:
-        limite_ordre = 0
-    if calcul_completion != "Taux" and calcul_completion != "Places Prises":
-        calcul_completion = "Taux"
-
+    # Validation des paramètres
+    limite_ordre = min(max(limite_ordre, 0), 5)
+    calcul_completion = calcul_completion if calcul_completion in ["Taux", "Places Prises"] else "Taux"
     semestres = ["S8", "S9", "S10"]
-    choix_final = ""
-    # Conversion des choix en tuple pour tout les semestres
+
+    # Convertir les colonnes de choix en tuples
     for semestre in semestres:
-        convertir_colonne_en_tuple(df_etudiants, "Choix " + str(semestre))
-        logging.info("conversion colonne " + str(semestre) + " en tuple reussie")
+        convertir_colonne_en_tuple(df_etudiants, f"Choix {semestre}")
+        logging.info(f"Conversion colonne Choix {semestre} en tuple réussie")
 
-    # On parcours ligne par ligne le df des étudiants
-    for idx, row in df_etudiants.iterrows():
+    df_etudiants.columns = df_etudiants.columns.str.replace(" ", "_")
+    
+    # Initialisation des colonnes résultat avec dtype=object pour éviter les FutureWarnings
+    for semestre in semestres:
+        col_final = f"choix_final {semestre}"
+        if col_final not in df_etudiants.columns:
+            df_etudiants[col_final] = pd.Series([np.nan] * len(df_etudiants), dtype=object)
+        else:
+            df_etudiants[col_final] = df_etudiants[col_final].astype(object)
+
+    for row in df_etudiants.itertuples(index=True):
         for semestre in semestres:
-            attribution_faite = False
-            tuple_choix = row["Choix " + str(semestre)] # On récupère le tuple de choix du semestre
-            if pd.notna(tuple_choix): # Si le tuple n'est pas vide
-                for i in range(0, limite_ordre): # Cette boucle reprend le scénario 1 (le major a toujours son 1er voeux)
-                        choix_courant = tuple_choix[i]
-                        logging.info("traitement choix numero " + str(i) + " ("+ str(choix_courant) + " " + str(semestre) + ") de l'etudiant " + str(row["Id Etudiant"]) )
-                        if place_est_disponible(df_univ, choix_courant, semestre):
-                            choix_final = choix_courant
-                            attribution_faite = True
-                            logging.info("l etudiant " + str(row["Id Etudiant"]) + " a une place pour un de ses choix ordonnes")
-                            break
-                # La condition suivante est vrai si pas encore d'attribution et qu'il reste des choix à traiter
-                if not attribution_faite and limite_ordre <= 4: # Si l'attribution n'a pas été faite avec le scénario 1, on passe au scénario 2 avec les voeux restants
-                    tuple_choix = tuple_choix[limite_ordre:] # On ne garde que les choix non ordonnés
-                    if len(tuple_choix) < 2: # Si un seul choix restant, pas besoin de comparer les taux de complétion
-                        univ_la_moins_remplie = tuple_choix[0]
-                    else:
-                        univ_la_moins_remplie = get_universite_la_moins_remplie(df_univ, tuple_choix, semestre, "Taux")
-                    if place_est_disponible(df_univ, univ_la_moins_remplie, semestre):
-                        choix_final = univ_la_moins_remplie
-                        attribution_faite = True
-                        logging.info("l etudiant " + str(row["Id Etudiant"]) + " a une place pour un de ses choix non ordonnes")
-
-                elif not attribution_faite: # Si tout les choix ont été rejeté
-                    logging.info("tous les choix de l etudiant " + str(row["Id Etudiant"]) + " ont ete rejete")
-                    specialite = row["Specialite"]
-
-                    univ_compatible_la_moins_remplie = get_univ_compatible_la_moins_remplie(df_univ, semestre, specialite, calcul_completion)
-                    if place_est_disponible(df_univ, univ_compatible_la_moins_remplie, semestre):
-                        logging.info("une place est disponible pour l etudiant " + str(row["Id Etudiant"]) + " dans les universites compatible hors de ses choix")
-                        choix_final = univ_compatible_la_moins_remplie
-                        attribution_faite = True    
-                    else:
-                        choix_final = np.nan
-                        logging.info("plus de places disponibles dans aucune des universites pour etudiant " + str(row["Id Etudiant"]))
-
-                if attribution_faite:
-                    logging.info(str(get_nb_places_disponibles(df_univ, nom_du_partenaire=choix_final, semestre=semestre)) + " places disponibles pour " + str(choix_final) + " " + str(semestre))
-                    # Modification dans les DataFrames etudiant et université
-                    df_etudiants.at[idx, "choix_final " + str(semestre)] = choix_final
-                    incrementer_places_prise(df_univ=df_univ, nom_du_partenaire=choix_final, semestre=semestre)
-                    logging.info(str(choix_final) + " " + str(semestre) + " est attribue a " + str(row["Id Etudiant"]))
-                    logging.info("Incrementation reussie, "+ str(get_nb_places_disponibles(df_univ, nom_du_partenaire=choix_final, semestre=semestre)) + " place(s) restant(es) pour " + str(choix_final) + " " + str(semestre))
-            else:
-                logging.info(str(row["Id Etudiant"]) + " n'a pas fait de choix au " + str(semestre))
+            choix_final = traiter_etudiant_semestre(
+                row=row,
+                df_univ=df_univ,
+                semestre=semestre,
+                limite_ordre=limite_ordre,
+                calcul_completion=calcul_completion
+            )
+            if pd.notna(choix_final):
+                df_etudiants.at[row.Index, f"choix_final {semestre}"] = choix_final
+                incrementer_places_prise(df_univ, choix_final, semestre)
     return df_etudiants
 
-test = True
+
+###############################################
+
+
+test = False
 if test:
+    nb_etudiants = 300
+    start = time.time()
+
     dataframes = charger_excels("data")
-    #print(dataframes.keys())
+
     df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
-    print(df_univ)
-    
-    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(300, df_univ)
-    print(df_etu_fictif)
-    df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
+    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ)
     df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 3, "Taux" )
-    #print(df_final)
+    end = time.time()
+
+    df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
     df_univ.to_excel("df_univ.xlsx") 
     df_final.to_excel("df_final.xlsx") 
-    #print(df_univ)
+    print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant")
+
+benchmark = False
+if benchmark:
+    # Paramètres du benchmark
+    taille_echantillons = [20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400]
+    temps_execution = []
+
+    for nb_etudiants in taille_echantillons:
+        print(f"Test avec {nb_etudiants} étudiants...")
+        
+        # Chargement des données de base
+        dataframes = charger_excels("data")
+        df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
+
+        # Génération des étudiants fictifs
+        df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ)
+
+        # Exécution avec mesure de temps
+        start = time.time()
+        df_univ_copy = df_univ.copy()
+        df_etu_copy = df_etu_fictif.copy()
+        df_final = traitement_scenario_hybride(df_univ_copy, df_etu_copy, 3, "Taux")
+        end = time.time()
+
+        # Sauvegarde
+        temps = round(end - start, 2)
+        temps_execution.append(temps)
+        print(f"  → Temps : {temps} sec")
+
+    # Résultats sous forme de DataFrame
+    df_benchmark = pd.DataFrame({
+        "nb_etudiants": taille_echantillons,
+        "temps_execution": temps_execution
+    })
+
+    # Sauvegarde des résultats
+    df_benchmark.to_excel("benchmark_affectation.xlsx", index=False)
+
+    # Affichage de la courbe
+    plt.figure(figsize=(10, 6))
+    plt.plot(df_benchmark["nb_etudiants"], df_benchmark["temps_execution"], marker='o')
+    plt.title("Temps d'exécution en fonction du nombre d'étudiants")
+    plt.xlabel("Nombre d'étudiants")
+    plt.ylabel("Temps d'exécution (secondes)")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("courbe_temps_affectation.png")
+    plt.show()

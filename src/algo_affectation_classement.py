@@ -216,11 +216,9 @@ def get_liste_univ_compatible(df_univ:pd.DataFrame, semestre:str, specialite:str
         res: la liste des universités qui sont compatibles avec la spécialité et le semestre en paramètre.
     """
     
-    res = []
-    for idx, row in df_univ.iterrows(): # On parcours chaque ligne du df
-        if specialite in row["Specialites Compatibles " + str(semestre)]: # Si l'univ est compatible 
-            res.append(row["NOM DU PARTENAIRE"])
-    return res
+    col = f"Specialites Compatibles {semestre}"
+    mask = df_univ[col].apply(lambda lst: specialite in lst if isinstance(lst, list) else False)
+    return df_univ.loc[mask, "NOM DU PARTENAIRE"].tolist()
 
 def get_univ_compatible_la_moins_remplie(df_univ:pd.DataFrame, semestre:str, specialite:str, calcul_completion:str="Taux"):
     """Retourne le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie.
@@ -325,7 +323,7 @@ if test:
     df_etu_fictif = generer_df_choix_etudiants_spe_compatible(300, df_univ)
     print(df_etu_fictif)
     df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
-    df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 0, "Taux" )
+    df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 3, "Taux" )
     #print(df_final)
     df_univ.to_excel("df_univ.xlsx") 
     df_final.to_excel("df_final.xlsx") 

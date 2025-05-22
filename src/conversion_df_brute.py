@@ -82,8 +82,9 @@ def fusion_df_partner(dict_df:dict):
 
     return pd.DataFrame(data)
 
-test = True
+test = False
 if test :
     dataframes_test = charger_excels("data")
     test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
     print(test)
+    test['universites_partenaires'].to_excel("df_univ.xlsx") 

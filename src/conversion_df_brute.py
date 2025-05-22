@@ -1,3 +1,4 @@
+from collections import defaultdict
 import pandas as pd
 import numpy as np
 from excel_en_dataframe import charger_excels
@@ -13,9 +14,9 @@ def conversion_df_brute_pour_affectation(dataframes:dict) -> dict:
     """
     res = {}
     dict_df_partner = recup_dict_df_partner(dataframes)
-    df_partner = fusion_df_partner(dict_df_partner)
+    df_partner_complet = fusion_df_partner(dict_df_partner)
     res["choix_etudiants"] = next(iter(dataframes.values()))
-    res["universites_partenaires"] = df_partner
+    res["universites_partenaires"] = df_partner_complet
     return res
 
 def recup_dict_df_partner(dataframes:dict) -> dict:
@@ -39,7 +40,7 @@ def recup_dict_df_partner(dataframes:dict) -> dict:
     return res
 
 def fusion_df_partner(dict_df:dict):
-    """Fusionne les df du dictionnaire fourni en un seul df avec les colonnes Nom, Places SX, Places Prises SX, Specialites Compatibles SX.
+    """Fusionne les 3 df partner_SX du dictionnaire fourni en un seul df avec les colonnes Nom, Places SX, Places Prises SX, Specialites Compatibles SX.
     
     Keyword arguments:
     df -- Le dictionnaire des dataframes lié au univsersités partenaire, il y en a un par semestre (3)
@@ -48,25 +49,35 @@ def fusion_df_partner(dict_df:dict):
     # On récupère la liste des noms des partenaires dans le premier df
     liste_noms = next(iter(dict_df.values()))["NOM DU PARTENAIRE"].tolist()
     dict_place_semestre = {} # De la forme {"Places S8":[], "Places S9":[], "Places S10":[]}
-    dict_spe_compatible_semestre = {} # De la forme {"Specialites Compatibles S8":[], "Specialites Compatibles S9":[], "Specialites Compatibles S10":[]}
-    bonjour
+    dict_spe_compatible_semestre = defaultdict(list) # De la forme {"Specialites Compatibles S8":[], "Specialites Compatibles S9":[], "Specialites Compatibles S10":[]}
+    liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
+    
+    # On parcours les 3 df
     for key in dict_df: # key = "partner_SX"
         semestre = key.split("_")[-1] # On récupère le semestre
-        cle = "Places " + str(semestre)
-        colonne = "Total " + str(semestre)
+        cle = "Places " + str(semestre) # clé du dictionnaire
+        colonne = "Total " + str(semestre) # Colonne du df
         dict_place_semestre[cle] = dict_df[key][colonne]
 
+        # On va regarder les spécialités compatible (place > 0) de chaque ligne
+        for idx, row in dict_df[key].iterrows(): # On parcours chaque ligne du df courant
+            liste_specialites_pour_univ_courante = []
+            for spe in liste_specialites:
+                if pd.notna(row[spe]) and row[spe] > 0: # Si la spécialité est compatible
+                    liste_specialites_pour_univ_courante.append(spe)
+            dict_spe_compatible_semestre["Specialites Compatibles " + str(semestre)].append(liste_specialites_pour_univ_courante)
+    
     data = {
         "NOM DU PARTENAIRE": liste_noms,
         "Places S8": dict_place_semestre["Places S8"],
         "Places Prises S8":0,
-        "Specialites Compatibles S8": np.nan,
+        "Specialites Compatibles S8": dict_spe_compatible_semestre["Specialites Compatibles S8"],
         "Places S9": dict_place_semestre["Places S9"],
         "Places Prises S9":0,
-        "Specialites Compatibles S9": np.nan,
+        "Specialites Compatibles S9": dict_spe_compatible_semestre["Specialites Compatibles S9"],
         "Places S10": dict_place_semestre["Places S10"],
         "Places Prises S10":0,
-        "Specialites Compatibles S10": np.nan
+        "Specialites Compatibles S10": dict_spe_compatible_semestre["Specialites Compatibles S10"]
     }
 
     return pd.DataFrame(data)

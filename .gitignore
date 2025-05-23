@@ -1,2 +1,4 @@
 /src/__pycache__
 log.txt
+*.pyc
+*.xlsx

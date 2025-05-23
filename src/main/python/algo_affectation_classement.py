@@ -16,36 +16,37 @@ logging.basicConfig(
     level=logging.INFO                 # Niveau minimal des messages (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 )
 
-def generer_df_choix_etudiants_spe_compatible(n, df_univ):
+
+def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=0.1):
     """
-    Génère un DataFrame contenant les choix d'université de n étudiants pour trois semestres. On prend en compte la spécialités des univ et des étudiants.
+    Génère un DataFrame contenant les choix d'université de n étudiants pour trois semestres, 
+    en tenant compte de la spécialité et en permettant que certains étudiants ne fassent pas de choix,
+    mais en garantissant qu'au moins un choix est fait pour chaque étudiant.
 
     Paramètres :
     ------------
     n : int
-        Le nombre d'étudiants (et donc de lignes du DataFrame).
+        Le nombre d'étudiants.
+    df_univ : pd.DataFrame
+        Le DataFrame des universités avec les colonnes 'Specialite', 'Semestre', 'Nom'.
+    proba_unique_semestre : float (entre 0 et 1)
+        Probabilité qu’un étudiant ne fasse qu'un choix sur les 3 semestres.
 
     Retour :
     --------
-    DataFrame pandas avec les colonnes :
-        - Id Etudiant : identifiant numérique (1 à n)
-        - Choix S8 : 5 noms d'univ
-        - Choix S9 : idem
-        - Choix S10 : idem
-
-    Remarques :
-    -----------
-    - Les codes Univ proviennent de la liste fixe ['AAAA', ..., 'ZZZZ'] (26 codes possibles).
-    - Aucun doublon n'est présent dans une même ligne de choix.
-    - L'ordre des codes dans chaque choix est aléatoire.
+    pd.DataFrame avec :
+        - Id Etudiant
+        - Specialite
+        - Choix S8 (ou None)
+        - Choix S9 (ou None)
+        - Choix S10 (ou None)
     """
     if n < 1:
         raise ValueError("Le nombre d'étudiants doit être au moins 1.")
-    
+
     liste_semestre = ["S8", "S9", "S10"]
     liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
-    
-    
+
     data = {
         "Id Etudiant": [],
         "Specialite": [],
@@ -58,12 +59,41 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
         data["Id Etudiant"].append(i)
         specialite_choisie = random.choice(liste_specialites)
         data["Specialite"].append(specialite_choisie)
+
+        choix_par_semestre = {}
+
+        # Génération avec probabilité de ne pas faire de choix
         for semestre in liste_semestre:
-            liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite_choisie)
-            nb_choix = min(5, len(liste_univ_compatibles))
-            choix = random.sample(liste_univ_compatibles, nb_choix) # 5 noms différents, ordre aléatoire
-            data["Choix " + str(semestre)].append("; ".join(choix))
+            if random.random() < proba_unique_semestre:
+                choix_par_semestre[semestre] = None
+            else:
+                liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite_choisie)
+                if not liste_univ_compatibles:
+                    choix_par_semestre[semestre] = None
+                else:
+                    nb_choix = min(5, len(liste_univ_compatibles))
+                    choix = random.sample(liste_univ_compatibles, nb_choix)
+                    choix_par_semestre[semestre] = "; ".join(choix)
+
+        # Vérifier s'il y a au moins un choix parmi les 3 semestres
+        if all(val is None for val in choix_par_semestre.values()):
+            # Forcer un semestre aléatoire à avoir un choix
+            semestre_forcer = random.choice(liste_semestre)
+            liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre_forcer, specialite_choisie)
+            if liste_univ_compatibles:
+                nb_choix = min(5, len(liste_univ_compatibles))
+                choix = random.sample(liste_univ_compatibles, nb_choix)
+                choix_par_semestre[semestre_forcer] = "; ".join(choix)
+            else:
+                # Pas d'université compatible du tout => reste None
+                pass
+
+        for semestre in liste_semestre:
+            data[f"Choix {semestre}"].append(choix_par_semestre.get(semestre))
+
     return pd.DataFrame(data)
+
+
 
 def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
     """Retourne le nombre de places pour l'université correspondante.
@@ -181,8 +211,7 @@ def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
     df[colonne] = df[colonne].apply(lambda x: tuple(map(str.strip, x.split(";"))) if pd.notna(x) else x)
 
 def get_universite_la_moins_remplie(df_univ:pd.DataFrame, choix:tuple|list, semestre:str, calcul_completion:str="Taux") -> str:
-    """Retourne un str correspondant à l'université la moins remplie selon la méthode de calcul 
-    à un seul choix pour les semestres qu'il a choisi selon un scénario hybride entre le classement et la complétion des partenaires.
+    """Retourne un str correspondant à l'université la moins remplie selon la méthode de calcul. Si elles sont toutes remplies, la première de la liste|tuple est renvoyée.
     
     Args:
         df_univ: Le dataframe des universités partenaires
@@ -245,7 +274,7 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
         logging.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
         return np.nan
 
-    # Scénario 1 : Vœux ordonnés
+    # Scénario 1 : Voeux ordonnés
     for i, choix in enumerate(tuple_choix[:limite_ordre]):
         if place_est_disponible(df_univ, choix, semestre):
             logging.info(f"{id_etudiant} obtient le choix {choix} (ordre {i+1}) pour le {semestre}")
@@ -324,23 +353,23 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
 
 ###############################################
 
-
 test = False
+
 if test:
-    nb_etudiants = 300
+    nb_etudiants = 400
+    proba_unique_semestre = 0.7
     start = time.time()
 
-    dataframes = charger_excels("data")
+    dataframes = charger_excels("src\\main\\data")
 
     df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
-    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ)
+    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)
     df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 3, "Taux" )
     end = time.time()
-
-    df_etu_fictif.to_excel("df_etu_fictif.xlsx") 
-    df_univ.to_excel("df_univ.xlsx") 
-    df_final.to_excel("df_final.xlsx") 
-    print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant")
+    df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx") 
+    df_univ.to_excel("statistics\\df_univ.xlsx") 
+    df_final.to_excel("statistics\\df_final.xlsx") 
+    print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant et un proba de faire un unique semestre de "  + str(proba_unique_semestre))
 
 benchmark = False
 if benchmark:
@@ -352,7 +381,7 @@ if benchmark:
         print(f"Test avec {nb_etudiants} étudiants...")
         
         # Chargement des données de base
-        dataframes = charger_excels("data")
+        dataframes = charger_excels("src\\main\\data")
         df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
 
         # Génération des étudiants fictifs
@@ -377,7 +406,7 @@ if benchmark:
     })
 
     # Sauvegarde des résultats
-    df_benchmark.to_excel("benchmark_affectation.xlsx", index=False)
+    df_benchmark.to_excel("statistics\\benchmark_affectation.xlsx", index=False)
 
     # Affichage de la courbe
     plt.figure(figsize=(10, 6))

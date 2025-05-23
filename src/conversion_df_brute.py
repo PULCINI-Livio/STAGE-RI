@@ -1,4 +1,5 @@
 from collections import defaultdict
+import time
 import pandas as pd
 import numpy as np
 from excel_en_dataframe import charger_excels
@@ -47,45 +48,39 @@ def fusion_df_partner(dict_df:dict):
     Return: un dataframe avec les colonnes Nom, Places S8, Places S9, Places S10
     """
     # On récupère la liste des noms des partenaires dans le premier df
-    liste_noms = next(iter(dict_df.values()))["NOM DU PARTENAIRE"].tolist()
-    liste_noms = [s.rstrip() for s in liste_noms] # On enlève les espaces parasites à la fin des noms.
-    dict_place_semestre = {} # De la forme {"Places S8":[], "Places S9":[], "Places S10":[]}
-    dict_spe_compatible_semestre = defaultdict(list) # De la forme {"Specialites Compatibles S8":[], "Specialites Compatibles S9":[], "Specialites Compatibles S10":[]}
-    liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
+    semestres = ["S8", "S9", "S10"]
+    specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
     
-    # On parcours les 3 df
-    for key in dict_df: # key = "partner_SX"
-        semestre = key.split("_")[-1] # On récupère le semestre
-        cle = "Places " + str(semestre) # clé du dictionnaire
-        colonne = "Total " + str(semestre) # Colonne du df
-        dict_place_semestre[cle] = dict_df[key][colonne]
+    # Récupère les noms des partenaires depuis l'un des DataFrames
+    noms_partenaires = dict_df[f"partner_{semestres[0]}"]["NOM DU PARTENAIRE"].str.strip()
 
-        # On va regarder les spécialités compatible (place > 0) de chaque ligne
-        for idx, row in dict_df[key].iterrows(): # On parcours chaque ligne du df courant
-            liste_specialites_pour_univ_courante = []
-            for spe in liste_specialites:
-                if pd.notna(row[spe]) and row[spe] > 0: # Si la spécialité est compatible
-                    liste_specialites_pour_univ_courante.append(spe)
-            dict_spe_compatible_semestre["Specialites Compatibles " + str(semestre)].append(liste_specialites_pour_univ_courante)
+    data = {"NOM DU PARTENAIRE": noms_partenaires}
     
-    data = {
-        "NOM DU PARTENAIRE": liste_noms,
-        "Places S8": dict_place_semestre["Places S8"],
-        "Places Prises S8":0,
-        "Specialites Compatibles S8": dict_spe_compatible_semestre["Specialites Compatibles S8"],
-        "Places S9": dict_place_semestre["Places S9"],
-        "Places Prises S9":0,
-        "Specialites Compatibles S9": dict_spe_compatible_semestre["Specialites Compatibles S9"],
-        "Places S10": dict_place_semestre["Places S10"],
-        "Places Prises S10":0,
-        "Specialites Compatibles S10": dict_spe_compatible_semestre["Specialites Compatibles S10"]
-    }
+    for semestre in semestres:
+        df = dict_df[f"partner_{semestre}"]
+
+        # Places disponibles
+        data[f"Places {semestre}"] = df[f"Total {semestre}"].tolist()
+
+        # Places prises initialisées à 0
+        data[f"Places Prises {semestre}"] = [0] * len(df)
+
+        # Spécialités compatibles (liste des colonnes dont la valeur > 0)
+        data[f"Specialites Compatibles {semestre}"] = df[specialites].apply(
+            lambda row: [spe for spe in specialites if pd.notna(row[spe]) and row[spe] > 0],
+            axis=1
+        )
 
     return pd.DataFrame(data)
 
-test = False
+
+test = True
 if test :
+    start = time.time()
     dataframes_test = charger_excels("data")
+    
     test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
+    end = time.time()
+    print(f"Temps d'exécution : {end - start:.2f} secondes")
     print(test)
     test['universites_partenaires'].to_excel("df_univ.xlsx") 

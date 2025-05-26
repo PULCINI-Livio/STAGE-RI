@@ -2,23 +2,52 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible, conversion_df_brute_pour_affectation
+from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible, conversion_df_brute_pour_affectation, get_taux_completion_moyen
 from excel_en_dataframe import charger_excels
 
-nb_etudiants = 400
-proba_unique_semestre = 0.5
-start = time.time()
+bonjour = False
+if bonjour:
+    nb_etudiants = 200
+    proba_unique_semestre = 0.0
 
-dataframes = charger_excels("src\\main\\data")
 
-df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
-df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)
-df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, 3, "Taux" )
-end = time.time()
-df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx") 
-df_univ.to_excel("statistics\\df_univ.xlsx") 
-df_final.to_excel("statistics\\df_final.xlsx") 
-print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant et un proba de faire un unique semestre de "  + str(proba_unique_semestre))
+    dataframes = charger_excels("src\\main\\data")
+    df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
+    df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)
+
+    limite_ordre = 5
+    df_final_ordre_5 = traitement_scenario_hybride(df_univ.copy(deep=True), df_etu_fictif.copy(deep=True), limite_ordre, "Taux" )
+    limite_ordre = 3
+    df_final_ordre_3 = traitement_scenario_hybride(df_univ.copy(deep=True), df_etu_fictif.copy(deep=True), limite_ordre, "Taux" )
+    limite_ordre = 0
+    df_final_ordre_0 = traitement_scenario_hybride(df_univ.copy(deep=True), df_etu_fictif.copy(deep=True), limite_ordre, "Taux" )
+
+    df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx") 
+    df_univ.to_excel("statistics\\df_univ.xlsx") 
+    df_final_ordre_5.to_excel("statistics\\df_final_ordre_5.xlsx") 
+    df_final_ordre_3.to_excel("statistics\\df_final_ordre_3.xlsx") 
+    df_final_ordre_0.to_excel("statistics\\df_final_ordre_0.xlsx") 
+
+test = True
+if test:
+    nb_etudiants = 5
+    proba_unique_semestre = 0.0
+    start = time.time()
+    limite_ordre = 3
+    dataframes = charger_excels("src\\main\\data")
+
+    df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
+    #df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)
+    df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
+    df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx") 
+    df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre, "Taux" )
+    end = time.time()
+    df_etu_fictif.to_excel("statistics\\df_etu_fictif_final.xlsx") 
+    df_univ.to_excel("statistics\\df_univ.xlsx") 
+    df_final.to_excel("statistics\\df_final.xlsx") 
+    print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant et un proba de faire un unique semestre de "  + str(proba_unique_semestre) + " et une limite d'ordre de " + str(limite_ordre))
+
+    print(get_taux_completion_moyen(df_univ, "S8"))
 
 benchmark = False
 if benchmark:

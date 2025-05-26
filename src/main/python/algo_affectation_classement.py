@@ -9,12 +9,21 @@ from excel_en_dataframe import charger_excels
 from conversion_df_brute import conversion_df_brute_pour_affectation
 
 # Configuration de base du logging
-logging.basicConfig(
-    filename='log.txt',                # Fichier de sortie
-    filemode='a',                      # Mode 'a' = append (évite d’écraser)
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    level=logging.INFO                 # Niveau minimal des messages (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-)
+import logging
+
+# Logger général
+logger_general = logging.getLogger('general')
+logger_general.setLevel(logging.INFO)
+fh_general = logging.FileHandler('log.txt', mode='a')
+fh_general.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger_general.addHandler(fh_general)
+
+# Logger spécifique pour le taux
+logger_taux = logging.getLogger('taux')
+logger_taux.setLevel(logging.DEBUG)
+fh_taux = logging.FileHandler('log_taux.txt', mode='a')
+fh_taux.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger_taux.addHandler(fh_taux)
 
 
 def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=0.1):
@@ -208,6 +217,24 @@ def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, seme
         res = None
     return res
 
+import pandas as pd
+
+def get_taux_completion_moyen(df_univ: pd.DataFrame, semestre: str) -> float:
+    logger_taux.debug(f"bonjour")
+    partenaires = df_univ['NOM DU PARTENAIRE'].unique()
+    taux_list = []
+
+    for partenaire in partenaires:
+        taux = get_taux_completion_places(df_univ, partenaire, semestre)
+        logger_taux.debug(f"taux de completion de {taux} pour {partenaire} au {semestre}")
+        if taux is not None:
+            taux_list.append(taux)
+
+    if taux_list:
+        return sum(taux_list) / len(taux_list)
+    else:
+        return None  # Aucun taux valide
+
 def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
     """convertit toutes les valeurs d'un colonne d'un df en tuple
     
@@ -282,14 +309,16 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
     tuple_choix = getattr(row, col_choix, None)
 
     if not tuple_choix or not isinstance(tuple_choix, tuple):
-        logging.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
+        logger_general.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
         return np.nan
 
     # Scénario 1 : Voeux ordonnés
     for i, choix in enumerate(tuple_choix[:limite_ordre]):
         if place_est_disponible(df_univ, choix, semestre):
-            logging.info(f"{id_etudiant} obtient le choix {choix} (ordre {i+1}) pour le {semestre}")
+            logger_general.info(f"{id_etudiant} obtient le choix {choix} (ordre {i+1}) pour le {semestre}")
             return choix
+        else:
+            logger_general.info(f"{id_etudiant} n'obtient pas le choix {choix} pour {semestre} dans scénario 1")
 
     # Scénario 2 : Choix restants
     choix_restants = tuple_choix[limite_ordre:]
@@ -299,17 +328,19 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
         else:
             univ_choisie = get_universite_la_moins_remplie(df_univ, choix_restants, semestre, calcul_completion)
         if place_est_disponible(df_univ, univ_choisie, semestre):
-            logging.info(f"{id_etudiant} obtient {univ_choisie} via les choix non ordonnés pour {semestre}")
+            logger_general.info(f"{id_etudiant} obtient {univ_choisie} via les choix non ordonnés pour {semestre}")
             return univ_choisie
+        else:
+            logger_general.info(f"{id_etudiant} n'obtient pas un des choix pour {semestre} dans scénario 2")
 
     # Scénario 3 : Aucune des options précédentes
     specialite = getattr(row, "Specialite", None)
     univ_fallback = get_univ_compatible_la_moins_remplie(df_univ, semestre, specialite, calcul_completion)
     if place_est_disponible(df_univ, univ_fallback, semestre):
-        logging.info(f"{id_etudiant} affecté par fallback à {univ_fallback} pour {semestre}")
+        logger_general.info(f"{id_etudiant} affecté par fallback à {univ_fallback} pour {semestre}")
         return univ_fallback
 
-    logging.info(f"Aucune attribution possible pour {id_etudiant} au {semestre}")
+    logger_general.info(f"Aucune attribution possible pour {id_etudiant} au {semestre}")
     return np.nan
 
 def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame, limite_ordre:int=0, calcul_completion:str="Taux"):
@@ -335,7 +366,7 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
     # Convertir les colonnes de choix en tuples
     for semestre in semestres:
         convertir_colonne_en_tuple(df_etudiants, f"Choix {semestre}")
-        logging.info(f"Conversion colonne Choix {semestre} en tuple réussie")
+        logger_general.info(f"Conversion colonne Choix {semestre} en tuple réussie")
 
     df_etudiants.columns = df_etudiants.columns.str.replace(" ", "_")
     

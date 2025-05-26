@@ -93,7 +93,8 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=
 
     return pd.DataFrame(data)
 
-
+def semestre_est_valide(semestre:str, liste_semestres:list=["S8", "S9", "S10"]):
+    return semestre in liste_semestres
 
 def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
     """Retourne le nombre de places pour l'université correspondante.
@@ -112,15 +113,14 @@ def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str
         Le nombre de place affichés à la ligne pour le code univ correspondant
     """
 
+    if not semestre_est_valide(semestre):
+        return None
     places = df.loc[df["NOM DU PARTENAIRE"] == nom_du_partenaire, "Places "+str(semestre)]
     if places.empty:
-        #print(str(nom_du_partenaire) + " " + semestre + " est vide, on retourne None")
         return None
     val = places.iloc[0]
     if pd.isna(val):
-        #print(str(nom_du_partenaire) + " " + semestre + " isna, on retourne None")
         return None
-    #print(str(nom_du_partenaire) + " " + semestre + " est bon avec " + str(int(places)) + " places")
     return int(val)
 
 def get_nombre_places_prises(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
@@ -140,6 +140,8 @@ def get_nombre_places_prises(df:pd.DataFrame, nom_du_partenaire:str, semestre:st
         Le nombre de place affichés à la ligne pour le code univ correspondant
     """
     
+    if not semestre_est_valide(semestre):
+        return None
     places = df.loc[df["NOM DU PARTENAIRE"] == nom_du_partenaire, "Places Prises "+str(semestre)]
     if places.empty:
         return None
@@ -159,10 +161,12 @@ def place_est_disponible(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:s
         bool: True si il y a au moins une place
         bool: False si il y a 0 place ou que la donnée est manquante
     """
-
-    res = False
-    if get_nb_places_disponibles(df_univ, nom_du_partenaire, semestre) > 0:
+    if not semestre_est_valide(semestre) or get_nb_places_disponibles(df_univ, nom_du_partenaire, semestre) == None:
+        res = None
+    elif get_nb_places_disponibles(df_univ, nom_du_partenaire, semestre) > 0:
         res = True
+    else:
+        res = False
     return res
 
 def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
@@ -176,7 +180,7 @@ def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semest
     # Filtrage des lignes correspondantes
     mask = df_univ["NOM DU PARTENAIRE"] == nom_du_partenaire
 
-    if mask.any():
+    if mask.any() and semestre_est_valide(semestre):
         idx = df_univ[mask].index[0]  # Prend la première ligne correspondante
         current = df_univ.at[idx, "Places Prises " + str(semestre)]
 
@@ -185,19 +189,23 @@ def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semest
             df_univ.at[idx, "Places Prises " + str(semestre)] = current + 1
 
 def get_nb_places_disponibles(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
-    res = 0
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
     if nb_places_total is not None and nb_places_prises is not None:
         res = nb_places_total-nb_places_prises
+    else:
+        res = None
     return res
 
 def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, semestre:str):
-    res = 1.0
     nb_places_prises = get_nombre_places_prises(df_univ, nom_du_partenaire, semestre)
     nb_places_total = get_nombre_places_total(df_univ, nom_du_partenaire, semestre)
-    if nb_places_total is not None and nb_places_total != 0:
+    if nb_places_total is not None and nb_places_total != 0 and nb_places_prises is not None:
         res = nb_places_prises/nb_places_total
+    elif nb_places_total == 0:
+        res = 1
+    else:
+        res = None
     return res
 
 def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
@@ -259,10 +267,13 @@ def get_univ_compatible_la_moins_remplie(df_univ:pd.DataFrame, semestre:str, spe
         semestre: Le semestre choisi en str.
 
     Returns:
-        res: le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie.
+        res: le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie ou une chaine vide si aucune université ne correspond.
     """
+    res = ""
     liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite)
-    return get_universite_la_moins_remplie(df_univ, liste_univ_compatibles, semestre, calcul_completion)
+    if liste_univ_compatibles != []:
+        res = get_universite_la_moins_remplie(df_univ, liste_univ_compatibles, semestre, calcul_completion)
+    return res
 
 def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_completion):
     # Préparer un mapping dynamique des noms

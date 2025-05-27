@@ -5,9 +5,6 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from excel_en_dataframe import charger_excels
-from conversion_df_brute import conversion_df_brute_pour_affectation
-
 # Configuration de base du logging
 import logging
 
@@ -48,12 +45,11 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=
         - Specialite
         - Choix S8 (ou None)
         - Choix S9 (ou None)
-        - Choix S10 (ou None)
     """
     if n < 1:
         raise ValueError("Le nombre d'étudiants doit être au moins 1.")
 
-    liste_semestre = ["S8", "S9", "S10"]
+    liste_semestre = ["S8", "S9"]
     liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
 
     data = {
@@ -61,7 +57,6 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=
         "Specialite": [],
         "Choix S8": [],
         "Choix S9": [],
-        "Choix S10": []
     }
 
     for i in range(1, n + 1):
@@ -102,7 +97,7 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=
 
     return pd.DataFrame(data)
 
-def semestre_est_valide(semestre:str, liste_semestres:list=["S8", "S9", "S10"]):
+def semestre_est_valide(semestre:str, liste_semestres:list=["S8", "S9"]):
     return semestre in liste_semestres
 
 def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str):
@@ -245,31 +240,32 @@ def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
     """
     df[colonne] = df[colonne].apply(lambda x: tuple(map(str.strip, x.split(";"))) if pd.notna(x) else x)
 
-def get_universite_la_moins_remplie(df_univ:pd.DataFrame, choix:tuple|list, semestre:str, calcul_completion:str="Taux") -> str:
+def get_universite_la_moins_remplie(df_univ: pd.DataFrame, choix: tuple | list, semestre: str, calcul_completion: str = "Taux") -> str:
     """Retourne un str correspondant à l'université la moins remplie selon la méthode de calcul. Si elles sont toutes remplies, la première de la liste|tuple est renvoyée.
     
     Args:
         df_univ: Le dataframe des universités partenaires
-        choix: Le tuple contenant les universités partenaires choisi par l'étudiant
+        choix: Le tuple ou la liste contenant les universités partenaires choisis par l'étudiant
         semestre: Le semestre SX en str
-        calcul_completion: Un str qui va donner la méthode de calcule de la complétion, "Taux" calcule selon le rapport entre le total de place disponible et le nombre de places prises et choisi le partenaire avec le taux le plus bas. "Places Prises" regarde seulement combien de places sont prises et choisi ceux avec le moins de places prises.
+        calcul_completion: Un str indiquant la méthode de calcul de la complétion ("Taux" ou "Places Prises")
 
     Returns:
-        res: le str de l'université la moins remplie selon la méthode de calcul
+        str: le nom de l'université la moins remplie ou "" si aucun choix n'est fourni
     """
-    
+    if not choix:
+        return ""
+
     univ_la_moins_rempli = choix[0]
-    i = 1
-    while i < len(choix):
-        courant = choix[i]
+    for courant in choix[1:]:
         if calcul_completion == "Taux":
             if get_taux_completion_places(df_univ, courant, semestre) < get_taux_completion_places(df_univ, univ_la_moins_rempli, semestre):
                 univ_la_moins_rempli = courant
         else:
             if get_nombre_places_prises(df_univ, courant, semestre) < get_nombre_places_prises(df_univ, univ_la_moins_rempli, semestre):
                 univ_la_moins_rempli = courant
-        i += 1
+
     return univ_la_moins_rempli
+
 
 def get_liste_univ_compatible(df_univ:pd.DataFrame, semestre:str, specialite:str):
     """Retourne la liste des universités qui sont compatibles avec la spécialité et le semestre en paramètre.
@@ -286,20 +282,87 @@ def get_liste_univ_compatible(df_univ:pd.DataFrame, semestre:str, specialite:str
     mask = df_univ[col].apply(lambda lst: specialite in lst if isinstance(lst, list) else False)
     return df_univ.loc[mask, "NOM DU PARTENAIRE"].tolist()
 
-def get_univ_compatible_la_moins_remplie(df_univ:pd.DataFrame, semestre:str, specialite:str, calcul_completion:str="Taux"):
-    """Retourne le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie.
+def get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, semestre:str, specialite:str, calcul_completion:str="Taux"):
+    """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
     
     Args:
         df_univ: Le dataframe des universités partenaires.
+        specialite: la spécialité de l'étudiant
         semestre: Le semestre choisi en str.
 
     Returns:
-        res: le nom de l'université qui est compatible avec la spécialité en paramètre et qui est la moins remplie ou une chaine vide si aucune université ne correspond.
+        res: le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire ou une chaine vide si aucune n'est disponible.
     """
     res = ""
     liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite)
     if liste_univ_compatibles != []:
-        res = get_universite_la_moins_remplie(df_univ, liste_univ_compatibles, semestre, calcul_completion)
+        res = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, liste_univ_compatibles, semestre, calcul_completion)
+    return res
+
+def scinder_liste_univ_par_prio(df_univ, liste_choix): 
+    """Retourne deux listes, la première est celle des univ prioritaires, la deuxième les non prioritaires.
+    
+    Args:
+        df_univ: Le DataFrame des universités partenaires.
+        liste_choix: Une liste ou un tuple contenant des noms de partenaires.
+        
+    Returns:
+        tuple: (liste_prioritaires, liste_non_prioritaires)
+    """
+    liste_prioritaires = []
+    liste_non_prioritaires = []
+    
+    for nom in liste_choix:
+        ligne = df_univ[df_univ["NOM DU PARTENAIRE"] == nom]
+        if not ligne.empty:
+            prioritaire = ligne.iloc[0]["Prioritaire"]
+            if isinstance(prioritaire, str) and prioritaire.strip().lower() == "oui":
+                liste_prioritaires.append(nom)
+            else:
+                liste_non_prioritaires.append(nom)
+
+    return liste_prioritaires, liste_non_prioritaires
+
+def get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, liste_choix:tuple|list, note_etudiant:int, semestre:str, calcul_completion:str="Taux"):
+    """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
+    
+    Args:
+        df_univ: Le dataframe des universités partenaires.
+        choix: une liste ou tuple des partenaires
+        note_etudiant: la note de l'étudiant
+        semestre: Le semestre choisi en str.
+
+    Returns:
+        res: le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire ou une chaine vide si aucune ne correspond.
+    """
+    res = ""
+    univ_prioritaires, univ_non_prioritaires = scinder_liste_univ_par_prio(df_univ, liste_choix)
+    univ_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_prioritaires, semestre)
+    if place_est_disponible(df_univ, univ_prio_la_moins_remplie, semestre) and etudiant_a_niveau_requis(df_univ, note_etudiant, univ_prio_la_moins_remplie, semestre):
+        res = univ_prio_la_moins_remplie
+    else:
+        univ_non_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_non_prioritaires)
+        if place_est_disponible(df_univ, univ_non_prio_la_moins_remplie, semestre) and etudiant_a_niveau_requis(df_univ, note_etudiant, univ_non_prio_la_moins_remplie, semestre):
+            res = univ_non_prio_la_moins_remplie
+    return res
+
+def etudiant_a_niveau_requis(df_univ, note_etudiant, nom_du_partenaire, semestre):
+    """Vérifie que l'étudiant a une note suffisante si l'université en paramètre a une note minimale.
+    
+    Args:
+        df_univ: Le dataframe des universités partenaires.
+        note_etudiant: La note de l'etudiant.
+        nom_du_partenaire: le nom de l'université
+        semestre: le semestre choisi
+
+    Returns:
+        res: True si l'étudiant a le niveau requis ou qu'aucun niveau n'est précisé, False le cas échéant.
+    """
+    res = True
+    note_min_univ = df_univ.loc[df_univ["NOM DU PARTENAIRE"] == nom_du_partenaire, "Note Min "+str(semestre)]
+    note_min_valeur = note_min_univ.values[0] if not note_min_univ.empty else None
+    if not pd.isna(note_min_valeur) and not None and note_min_valeur > note_etudiant:
+        res = False
     return res
 
 def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_completion):
@@ -307,6 +370,7 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
     col_choix = f"Choix_{semestre}"
     id_etudiant = getattr(row, "Id_Etudiant", None)
     tuple_choix = getattr(row, col_choix, None)
+    note_etudiant = getattr(row, "Note", None)
 
     if not tuple_choix or not isinstance(tuple_choix, tuple):
         logger_general.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
@@ -314,7 +378,7 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
 
     # Scénario 1 : Voeux ordonnés
     for i, choix in enumerate(tuple_choix[:limite_ordre]):
-        if place_est_disponible(df_univ, choix, semestre):
+        if place_est_disponible(df_univ, choix, semestre) and etudiant_a_niveau_requis(df_univ, note_etudiant, choix, semestre):
             logger_general.info(f"{id_etudiant} obtient le choix {choix} (ordre {i+1}) pour le {semestre}")
             return choix
         else:
@@ -323,11 +387,8 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
     # Scénario 2 : Choix restants
     choix_restants = tuple_choix[limite_ordre:]
     if choix_restants:
-        if len(choix_restants) == 1:
-            univ_choisie = choix_restants[0]
-        else:
-            univ_choisie = get_universite_la_moins_remplie(df_univ, choix_restants, semestre, calcul_completion)
-        if place_est_disponible(df_univ, univ_choisie, semestre):
+        univ_choisie = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, choix_restants, semestre, calcul_completion)
+        if univ_choisie != "":
             logger_general.info(f"{id_etudiant} obtient {univ_choisie} via les choix non ordonnés pour {semestre}")
             return univ_choisie
         else:
@@ -335,8 +396,8 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
 
     # Scénario 3 : Aucune des options précédentes
     specialite = getattr(row, "Specialite", None)
-    univ_fallback = get_univ_compatible_la_moins_remplie(df_univ, semestre, specialite, calcul_completion)
-    if place_est_disponible(df_univ, univ_fallback, semestre):
+    univ_fallback = get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ, semestre, specialite, calcul_completion)
+    if univ_fallback != "":
         logger_general.info(f"{id_etudiant} affecté par fallback à {univ_fallback} pour {semestre}")
         return univ_fallback
 
@@ -361,7 +422,7 @@ def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame,
     # Validation des paramètres
     limite_ordre = min(max(limite_ordre, 0), 5)
     calcul_completion = calcul_completion if calcul_completion in ["Taux", "Places Prises"] else "Taux"
-    semestres = ["S8", "S9", "S10"]
+    semestres = ["S8", "S9"]
 
     # Convertir les colonnes de choix en tuples
     for semestre in semestres:

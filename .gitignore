@@ -4,3 +4,4 @@ log.txt
 *.xlsx
 *.png
 log_taux.txt
+log_debug.txt

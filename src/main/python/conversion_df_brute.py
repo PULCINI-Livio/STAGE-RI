@@ -79,7 +79,7 @@ def fusion_df_partner(dict_df:dict):
     return pd.DataFrame(data)
 
 
-test = True
+test = False
 if test :
     start = time.time()
     dataframes_test = charger_excels("src\\main\\data")

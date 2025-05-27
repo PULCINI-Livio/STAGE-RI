@@ -1,18 +1,18 @@
 import time
-import pandas as pd
-import matplotlib.pyplot as plt
 
-from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible, conversion_df_brute_pour_affectation, get_taux_completion_moyen
+from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible 
+from conversion_df_brute import conversion_df_brute_pour_affectation
 from excel_en_dataframe import charger_excels
-
 
 dataframes = charger_excels("src\\main\\data")
 df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
+#df_etu_fictif = generer_df_choix_etudiants_spe_compatible(160, df_univ)
 df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
+df_etu_fictif.to_excel("src\\main\\output\\df_etu_fictif.xlsx")
+df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre=1)
+df_final.to_excel("src\\main\\output\\df_etu_fictif_final.xlsx")
 
-print(df_univ)
-print(df_etu_fictif)
-df_etu_fictif.to_excel("src\\main\\output\\df_etu_fictif.xlsx", index=False)
+
 ###########################################
 test = False
 if test:
@@ -33,4 +33,3 @@ if test:
     df_final.to_excel("statistics\\df_final.xlsx") 
     print(f"Temps d'exécution : {end - start:.2f} secondes pour " + str(nb_etudiants) + " etudiant et un proba de faire un unique semestre de "  + str(proba_unique_semestre) + " et une limite d'ordre de " + str(limite_ordre))
 
-    print(get_taux_completion_moyen(df_univ, "S8"))

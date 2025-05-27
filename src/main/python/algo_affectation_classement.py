@@ -16,86 +16,77 @@ fh_general.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(messa
 logger_general.addHandler(fh_general)
 
 # Logger spécifique pour le taux
-logger_taux = logging.getLogger('taux')
-logger_taux.setLevel(logging.DEBUG)
-fh_taux = logging.FileHandler('log_taux.txt', mode='a')
+logger_debug = logging.getLogger('taux')
+logger_debug.setLevel(logging.DEBUG)
+fh_taux = logging.FileHandler('log_debug.txt', mode='a')
 fh_taux.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger_taux.addHandler(fh_taux)
+logger_debug.addHandler(fh_taux)
 
 
-def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_unique_semestre=0.1):
+def generer_df_choix_etudiants_spe_compatible(n, df_univ):
     """
-    Génère un DataFrame contenant les choix d'université de n étudiants pour trois semestres, 
-    en tenant compte de la spécialité et en permettant que certains étudiants ne fassent pas de choix,
-    mais en garantissant qu'au moins un choix est fait pour chaque étudiant.
+    Génère un DataFrame contenant les choix d'université de n étudiants répartis selon les quotas
+    des spécialités, avec une note aléatoire et des choix compatibles pour les semestres S8 et S9.
 
     Paramètres :
     ------------
     n : int
-        Le nombre d'étudiants.
+        Le nombre total d'étudiants.
     df_univ : pd.DataFrame
         Le DataFrame des universités avec les colonnes 'Specialite', 'Semestre', 'Nom'.
-    proba_unique_semestre : float (entre 0 et 1)
-        Probabilité qu’un étudiant ne fasse qu'un choix sur les 3 semestres.
 
     Retour :
     --------
-    pd.DataFrame avec :
+    pd.DataFrame trié par note décroissante avec :
         - Id Etudiant
         - Specialite
-        - Choix S8 (ou None)
-        - Choix S9 (ou None)
+        - Note
+        - Choix S8
+        - Choix S9
     """
     if n < 1:
         raise ValueError("Le nombre d'étudiants doit être au moins 1.")
 
+    taille_groupe_spe = {"MM":40, "MC":20, "SNI":20, "BAT":40, "EIT":20, "IDU":20}
     liste_semestre = ["S8", "S9"]
-    liste_specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
+
+    # Calculer les effectifs réels à générer pour chaque spé en fonction de n
+    total_defini = sum(taille_groupe_spe.values())
+    effectifs_par_spe = {spe: round(taille_groupe_spe[spe] / total_defini * n) for spe in taille_groupe_spe}
 
     data = {
         "Id Etudiant": [],
         "Specialite": [],
+        "Note": [],
         "Choix S8": [],
         "Choix S9": [],
     }
 
-    for i in range(1, n + 1):
-        data["Id Etudiant"].append(i)
-        specialite_choisie = random.choice(liste_specialites)
-        data["Specialite"].append(specialite_choisie)
+    id_etudiant = 1
+    for spe, nb_etudiants in effectifs_par_spe.items():
+        for _ in range(nb_etudiants):
+            data["Id Etudiant"].append(id_etudiant)
+            data["Specialite"].append(spe)
+            note = round(random.uniform(0, 20), 2)
+            data["Note"].append(note)
 
-        choix_par_semestre = {}
-
-        # Génération avec probabilité de ne pas faire de choix
-        for semestre in liste_semestre:
-            if random.random() < proba_unique_semestre:
-                choix_par_semestre[semestre] = None
-            else:
-                liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite_choisie)
+            for semestre in liste_semestre:
+                liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, spe)
                 if not liste_univ_compatibles:
-                    choix_par_semestre[semestre] = None
+                    choix = None
                 else:
                     nb_choix = min(5, len(liste_univ_compatibles))
-                    choix = random.sample(liste_univ_compatibles, nb_choix)
-                    choix_par_semestre[semestre] = "; ".join(choix)
+                    choix = "; ".join(random.sample(liste_univ_compatibles, nb_choix))
+                data[f"Choix {semestre}"].append(choix)
 
-        # Vérifier s'il y a au moins un choix parmi les 3 semestres
-        if all(val is None for val in choix_par_semestre.values()):
-            # Forcer un semestre aléatoire à avoir un choix
-            semestre_forcer = random.choice(liste_semestre)
-            liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre_forcer, specialite_choisie)
-            if liste_univ_compatibles:
-                nb_choix = min(5, len(liste_univ_compatibles))
-                choix = random.sample(liste_univ_compatibles, nb_choix)
-                choix_par_semestre[semestre_forcer] = "; ".join(choix)
-            else:
-                # Pas d'université compatible du tout => reste None
-                pass
+            id_etudiant += 1
 
-        for semestre in liste_semestre:
-            data[f"Choix {semestre}"].append(choix_par_semestre.get(semestre))
+    df_etudiants = pd.DataFrame(data)
+    df_etudiants.sort_values(by="Note", ascending=False, inplace=True)
+    df_etudiants.reset_index(drop=True, inplace=True)
+    
+    return df_etudiants
 
-    return pd.DataFrame(data)
 
 def semestre_est_valide(semestre:str, liste_semestres:list=["S8", "S9"]):
     return semestre in liste_semestres
@@ -215,13 +206,11 @@ def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, seme
 import pandas as pd
 
 def get_taux_completion_moyen(df_univ: pd.DataFrame, semestre: str) -> float:
-    logger_taux.debug(f"bonjour")
     partenaires = df_univ['NOM DU PARTENAIRE'].unique()
     taux_list = []
 
     for partenaire in partenaires:
         taux = get_taux_completion_places(df_univ, partenaire, semestre)
-        logger_taux.debug(f"taux de completion de {taux} pour {partenaire} au {semestre}")
         if taux is not None:
             taux_list.append(taux)
 
@@ -282,7 +271,7 @@ def get_liste_univ_compatible(df_univ:pd.DataFrame, semestre:str, specialite:str
     mask = df_univ[col].apply(lambda lst: specialite in lst if isinstance(lst, list) else False)
     return df_univ.loc[mask, "NOM DU PARTENAIRE"].tolist()
 
-def get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, semestre:str, specialite:str, calcul_completion:str="Taux"):
+def get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, note_etudiant:int, semestre:str, specialite:str, calcul_completion:str="Taux"):
     """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
     
     Args:
@@ -296,10 +285,12 @@ def get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, se
     res = ""
     liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, specialite)
     if liste_univ_compatibles != []:
-        res = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, liste_univ_compatibles, semestre, calcul_completion)
+        res = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, liste_univ_compatibles, note_etudiant, semestre, calcul_completion)
+    else:
+        logger_debug.debug(f"Aucune univ compatible pour {note_etudiant}")
     return res
 
-def scinder_liste_univ_par_prio(df_univ, liste_choix): 
+def scinder_liste_univ_par_prio(df_univ, liste_choix, semestre): 
     """Retourne deux listes, la première est celle des univ prioritaires, la deuxième les non prioritaires.
     
     Args:
@@ -315,13 +306,27 @@ def scinder_liste_univ_par_prio(df_univ, liste_choix):
     for nom in liste_choix:
         ligne = df_univ[df_univ["NOM DU PARTENAIRE"] == nom]
         if not ligne.empty:
-            prioritaire = ligne.iloc[0]["Prioritaire"]
+            prioritaire = ligne.iloc[0][f"Prioritaire {semestre}"]
             if isinstance(prioritaire, str) and prioritaire.strip().lower() == "oui":
                 liste_prioritaires.append(nom)
             else:
                 liste_non_prioritaires.append(nom)
 
     return liste_prioritaires, liste_non_prioritaires
+
+def get_depuis_df_univs_avec_place(df_univ:pd.DataFrame, semestre:str):
+    univs_disponibles = []
+    for nom_du_partenaire in df_univ["NOM DU PARTENAIRE"].unique():
+        if place_est_disponible(df_univ, nom_du_partenaire, semestre):
+            univs_disponibles.append(nom_du_partenaire)
+    return univs_disponibles
+
+def get_depuis_liste_univs_au_niveau(df_univ:pd.DataFrame, liste_univs:list, note_etudiant:int, semestre:str):
+    univs_au_niveau = []
+    for nom_du_partenaire in liste_univs:
+        if etudiant_a_niveau_requis(df_univ, note_etudiant, nom_du_partenaire, semestre):
+            univs_au_niveau.append(nom_du_partenaire)
+    return univs_au_niveau
 
 def get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, liste_choix:tuple|list, note_etudiant:int, semestre:str, calcul_completion:str="Taux"):
     """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
@@ -335,15 +340,22 @@ def get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame,
     Returns:
         res: le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire ou une chaine vide si aucune ne correspond.
     """
+
     res = ""
-    univ_prioritaires, univ_non_prioritaires = scinder_liste_univ_par_prio(df_univ, liste_choix)
-    univ_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_prioritaires, semestre)
-    if place_est_disponible(df_univ, univ_prio_la_moins_remplie, semestre) and etudiant_a_niveau_requis(df_univ, note_etudiant, univ_prio_la_moins_remplie, semestre):
+    liste_univs_avec_place = get_depuis_df_univs_avec_place(df_univ, semestre)
+    liste_univs_au_niveau = get_depuis_liste_univs_au_niveau(df_univ, liste_univs_avec_place, note_etudiant, semestre)
+    univ_prioritaires, univ_non_prioritaires = scinder_liste_univ_par_prio(df_univ, liste_univs_au_niveau, semestre)
+
+    univ_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_prioritaires, semestre, calcul_completion)
+    if univ_prio_la_moins_remplie != "":
         res = univ_prio_la_moins_remplie
     else:
-        univ_non_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_non_prioritaires)
-        if place_est_disponible(df_univ, univ_non_prio_la_moins_remplie, semestre) and etudiant_a_niveau_requis(df_univ, note_etudiant, univ_non_prio_la_moins_remplie, semestre):
+        logger_debug.debug(f"pas de place disponible dans les univ prio pour note = {note_etudiant}")
+        univ_non_prio_la_moins_remplie = get_universite_la_moins_remplie(df_univ, univ_non_prioritaires, semestre, calcul_completion)
+        if univ_non_prio_la_moins_remplie != "":
             res = univ_non_prio_la_moins_remplie
+        else:
+            logger_debug.debug(f"pas de places dispo dans les univ non prio pour etudiant {note_etudiant}")
     return res
 
 def etudiant_a_niveau_requis(df_univ, note_etudiant, nom_du_partenaire, semestre):
@@ -361,7 +373,7 @@ def etudiant_a_niveau_requis(df_univ, note_etudiant, nom_du_partenaire, semestre
     res = True
     note_min_univ = df_univ.loc[df_univ["NOM DU PARTENAIRE"] == nom_du_partenaire, "Note Min "+str(semestre)]
     note_min_valeur = note_min_univ.values[0] if not note_min_univ.empty else None
-    if not pd.isna(note_min_valeur) and not None and note_min_valeur > note_etudiant:
+    if note_min_valeur is not None and not pd.isna(note_min_valeur) and note_min_valeur > note_etudiant:
         res = False
     return res
 
@@ -374,6 +386,7 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
 
     if not tuple_choix or not isinstance(tuple_choix, tuple):
         logger_general.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
+        logger_debug.debug(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
         return np.nan
 
     # Scénario 1 : Voeux ordonnés
@@ -383,11 +396,12 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
             return choix
         else:
             logger_general.info(f"{id_etudiant} n'obtient pas le choix {choix} pour {semestre} dans scénario 1")
+            logger_debug.debug(f"{id_etudiant} n'obtient pas le choix {choix} pour {semestre} dans scénario 1")
 
     # Scénario 2 : Choix restants
     choix_restants = tuple_choix[limite_ordre:]
     if choix_restants:
-        univ_choisie = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, choix_restants, semestre, calcul_completion)
+        univ_choisie = get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ, choix_restants, note_etudiant, semestre, calcul_completion)
         if univ_choisie != "":
             logger_general.info(f"{id_etudiant} obtient {univ_choisie} via les choix non ordonnés pour {semestre}")
             return univ_choisie
@@ -396,11 +410,12 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
 
     # Scénario 3 : Aucune des options précédentes
     specialite = getattr(row, "Specialite", None)
-    univ_fallback = get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ, semestre, specialite, calcul_completion)
+
+    univ_fallback = get_depuis_df_univ_prioritaire_avec_place_et_niveau(df_univ, note_etudiant, semestre, specialite, calcul_completion)
     if univ_fallback != "":
         logger_general.info(f"{id_etudiant} affecté par fallback à {univ_fallback} pour {semestre}")
         return univ_fallback
-
+    
     logger_general.info(f"Aucune attribution possible pour {id_etudiant} au {semestre}")
     return np.nan
 

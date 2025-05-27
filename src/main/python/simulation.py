@@ -5,7 +5,16 @@ import matplotlib.pyplot as plt
 from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible, conversion_df_brute_pour_affectation, get_taux_completion_moyen
 from excel_en_dataframe import charger_excels
 
-test = True
+
+dataframes = charger_excels("src\\main\\data")
+df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
+df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
+
+print(df_univ)
+print(df_etu_fictif)
+df_etu_fictif.to_excel("src\\main\\output\\df_etu_fictif.xlsx", index=False)
+###########################################
+test = False
 if test:
     nb_etudiants = 5
     proba_unique_semestre = 0.0

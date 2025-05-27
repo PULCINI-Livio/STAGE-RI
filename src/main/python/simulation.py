@@ -30,16 +30,16 @@ if bonjour:
 
 test = True
 if test:
-    nb_etudiants = 5
+    nb_etudiants = 150
     proba_unique_semestre = 0.0
     start = time.time()
-    limite_ordre = 3
+    limite_ordre = 0
     dataframes = charger_excels("src\\main\\data")
 
     df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
     #df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)
     df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
-    df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx") 
+    df_etu_fictif.to_excel("statistics\\df_etu_fictif.xlsx")
     df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre, "Taux" )
     end = time.time()
     df_etu_fictif.to_excel("statistics\\df_etu_fictif_final.xlsx") 

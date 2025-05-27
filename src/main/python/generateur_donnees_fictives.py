@@ -7,7 +7,7 @@ import string
 def generer_dataframe_univ(n):
     """
     Génère un DataFrame contenant les codes universités et le nombre de places disponibles
-    pour trois semestres (S8, S9, S10).
+    pour trois semestres (S8, S9).
 
     Paramètres :
     ------------

@@ -1,19 +1,20 @@
 import time
 
-from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible 
+from algo_affectation_classement import traitement_scenario_hybride, generer_df_choix_etudiants_spe_compatible, comparaison_taux_completion_prio_non_prio 
 from conversion_df_brute import conversion_df_brute_pour_affectation
 from excel_en_dataframe import charger_excels
 
 dataframes = charger_excels("src\\main\\data")
 df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
-print(df_univ)
-"""
-#df_etu_fictif = generer_df_choix_etudiants_spe_compatible(160, df_univ)
-df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
-df_etu_fictif.to_excel("src\\main\\output\\df_etu_fictif.xlsx")
-df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre=1)
-df_final.to_excel("src\\main\\output\\df_etu_fictif_final.xlsx")"""
 
+df_etu_fictif = generer_df_choix_etudiants_spe_compatible(160, df_univ)
+#df_etu_fictif = conversion_df_brute_pour_affectation(dataframes)["choix_etudiants"]
+
+df_etu_fictif.to_excel("src\\main\\output\\df_etu_fictif.xlsx", index=False)
+df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre=1)
+df_univ.to_excel("src\\main\\output\\df_univ.xlsx", index=False)
+df_final.to_excel("src\\main\\output\\df_etu_fictif_final.xlsx", index=False)
+comparaison_taux_completion_prio_non_prio(df_univ)
 
 ###########################################
 test = False

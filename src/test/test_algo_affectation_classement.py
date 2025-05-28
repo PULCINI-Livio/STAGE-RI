@@ -1,8 +1,8 @@
-import sys
-import os
-
+import pandas as pd
 import numpy as np
 import pytest
+import sys
+import os
 
 # Ajoute le dossier 'src' au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -24,22 +24,6 @@ from algo_affectation_classement import (
     get_depuis_liste_univ_prioritaire_avec_place_et_niveau,
     etudiant_a_niveau_requis
 )
-import pandas as pd
-
-liste_specialite = ['MM', 'MMT', 'SNI', 'BAT', 'EIT', 'IDU', 'ESB', 'AM']
-dataframe_univ_ = pd.DataFrame({
-    "NOM DU PARTENAIRE": ["AAAA","BBBB"],
-    "Places S8": [8, 10],
-    "Places Prises S8": [1, 1],
-    "Specialites Compatibles S8": [liste_specialite, liste_specialite],
-    "Prioritaire S8": [1, 1],
-    "Note Min S8": [1, 1],
-    "Places S9": [8, 10],
-    "Places Prises S9": [1, 1],
-    "Specialites Compatibles S9": [liste_specialite, liste_specialite],
-    "Prioritaire S9": [1, 1],
-    "Note Min S9": [1, 1],
-})
 
 def test_semestre_est_valide():
     assert semestre_est_valide("S8", ["S8", "S9"]) is True

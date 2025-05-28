@@ -206,6 +206,23 @@ def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, seme
         res = None
     return res
 
+def comparaison_taux_completion_prio_non_prio(df_univ):
+    res = []
+    semestre = "S8"
+    liste_univs = df_univ["NOM DU PARTENAIRE"].tolist()
+    liste_prio, liste_non_prio = scinder_liste_univ_par_prio(df_univ, liste_univs, semestre)
+    taux_moyen_prio = 0
+    taux_moyen_non_prio = 0
+    for univ in liste_prio:
+       taux_moyen_prio += get_taux_completion_places(df_univ, univ, semestre)
+    for univ in liste_non_prio:
+       taux_moyen_non_prio += get_taux_completion_places(df_univ, univ, semestre)
+
+    taux_moyen_prio = taux_moyen_prio/len(liste_prio)
+    taux_moyen_non_prio = taux_moyen_non_prio/len(liste_non_prio)
+    print(f"taux_moyen_prio : {taux_moyen_prio}")
+    print(f"taux_moyen_non_prio : {taux_moyen_non_prio}")
+
 def convertir_colonne_en_tuple(df:pd.DataFrame, colonne:str):
     """convertit toutes les valeurs d'un colonne d'un df en tuple
     
@@ -300,18 +317,19 @@ def scinder_liste_univ_par_prio(df_univ, liste_choix, semestre):
 
     return liste_prioritaires, liste_non_prioritaires
 
-def get_depuis_df_univs_avec_place(df_univ:pd.DataFrame, semestre:str) -> list:
+def get_depuis_liste_univs_avec_place(df_univ:pd.DataFrame, liste_univs:list[str], semestre:str) -> list:
     """Retourne une liste d'universités qui ont des places disponibles.
     
     Args:
         df_univ: Le dataframe des universités partenaires.
+        liste_univs: La liste des univs à traiter
         semestre: Le semestre choisi en str.
 
     Returns:
         res: une liste d'universités qui ont des places disponibles ou une liste vide.
     """
     univs_disponibles = []
-    for nom_du_partenaire in df_univ["NOM DU PARTENAIRE"].unique():
+    for nom_du_partenaire in liste_univs:
         if place_est_disponible(df_univ, nom_du_partenaire, semestre):
             univs_disponibles.append(nom_du_partenaire)
     return univs_disponibles
@@ -324,7 +342,7 @@ def get_depuis_liste_univs_au_niveau(df_univ:pd.DataFrame, liste_univs:list, not
     return univs_au_niveau
 
 def get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame, liste_choix:tuple|list, note_etudiant:int, semestre:str, calcul_completion:str="Taux"):
-    """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
+    """Retourne le nom de l'université qui est la moins remplie de la liste fournie en considérant d'abord les univ prioritaire.
     
     Args:
         df_univ: Le dataframe des universités partenaires.
@@ -333,11 +351,11 @@ def get_depuis_liste_univ_prioritaire_avec_place_et_niveau(df_univ:pd.DataFrame,
         semestre: Le semestre choisi en str.
 
     Returns:
-        res: le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire ou une chaine vide si aucune ne correspond.
+        res: le nom de l'université qui est la moins remplie de la liste fournie en considérant d'abord les univ prioritaire ou une chaine vide si aucune ne correspond.
     """
 
     res = ""
-    liste_univs_avec_place = get_depuis_df_univs_avec_place(df_univ, semestre)
+    liste_univs_avec_place = get_depuis_liste_univs_avec_place(df_univ, liste_choix, semestre)
     liste_univs_au_niveau = get_depuis_liste_univs_au_niveau(df_univ, liste_univs_avec_place, note_etudiant, semestre)
     univ_prioritaires, univ_non_prioritaires = scinder_liste_univ_par_prio(df_univ, liste_univs_au_niveau, semestre)
 

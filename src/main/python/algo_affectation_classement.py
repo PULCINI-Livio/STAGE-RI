@@ -21,10 +21,14 @@ fh_taux.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)
 logger_debug.addHandler(fh_taux)
 
 
-def generer_df_choix_etudiants_spe_compatible(n, df_univ):
+import pandas as pd
+import random
+
+def generer_df_choix_etudiants_spe_compatible(n, df_univ, proba_un_seul_semestre=0.3):
     """
     Génère un DataFrame contenant les choix d'université de n étudiants répartis selon les quotas
     des spécialités, avec une note aléatoire et des choix compatibles pour les semestres S8 et S9.
+    Une certaine proportion d'étudiants ne fait de choix que pour un semestre (selon la probabilité spécifiée).
 
     Paramètres :
     ------------
@@ -32,6 +36,8 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
         Le nombre total d'étudiants.
     df_univ : pd.DataFrame
         Le DataFrame des universités avec les colonnes 'Specialite', 'Semestre', 'Nom'.
+    proba_un_seul_semestre : float (entre 0 et 1)
+        Probabilité qu'un étudiant ne fasse des vœux que pour un seul semestre.
 
     Retour :
     --------
@@ -48,7 +54,6 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
     taille_groupe_spe = {"MM":40, "MC":20, "SNI":20, "BAT":40, "EIT":20, "IDU":20}
     liste_semestre = ["S8", "S9"]
 
-    # Calculer les effectifs réels à générer pour chaque spé en fonction de n
     total_defini = sum(taille_groupe_spe.values())
     effectifs_par_spe = {spe: round(taille_groupe_spe[spe] / total_defini * n) for spe in taille_groupe_spe}
 
@@ -68,22 +73,33 @@ def generer_df_choix_etudiants_spe_compatible(n, df_univ):
             note = round(random.uniform(0, 20), 2)
             data["Note"].append(note)
 
+            # Décider si l'étudiant fait des voeux pour un ou deux semestres
+            fait_un_seul_semestre = random.random() < proba_un_seul_semestre
+            if fait_un_seul_semestre:
+                semestre_choisi = random.choice(liste_semestre)
+            else:
+                semestre_choisi = None  # signifie les deux
+
             for semestre in liste_semestre:
-                liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, spe)
-                if not liste_univ_compatibles:
-                    choix = None
+                if fait_un_seul_semestre and semestre != semestre_choisi:
+                    data[f"Choix {semestre}"].append("")
                 else:
-                    nb_choix = min(5, len(liste_univ_compatibles))
-                    choix = "; ".join(random.sample(liste_univ_compatibles, nb_choix))
-                data[f"Choix {semestre}"].append(choix)
+                    liste_univ_compatibles = get_liste_univ_compatible(df_univ, semestre, spe)
+                    if not liste_univ_compatibles:
+                        choix = ""
+                    else:
+                        nb_choix = min(5, len(liste_univ_compatibles))
+                        choix = "; ".join(random.sample(liste_univ_compatibles, nb_choix))
+                    data[f"Choix {semestre}"].append(choix)
 
             id_etudiant += 1
 
     df_etudiants = pd.DataFrame(data)
     df_etudiants.sort_values(by="Note", ascending=False, inplace=True)
     df_etudiants.reset_index(drop=True, inplace=True)
-    
+
     return df_etudiants
+
 
 def semestre_est_valide(semestre:str, liste_semestres:list[str]=["S8", "S9"]):
     """Vérifie que le semestre en entré est dans la liste liste_semestre.
@@ -431,6 +447,40 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
     
     logger_general.info(f"Aucune attribution possible pour {id_etudiant} au {semestre}")
     return np.nan
+
+def tri_df_etudiant_semestre_ponderation(df_etudiants:pd.DataFrame, alpha=0.05):
+    """Retourne un df des étudiants trié selon la priorité calculée.
+    
+    Args:
+        df_etudiants: Le dataframe des choix des étudiants
+        alpha: Le coefficient de pénalité, entre 0 et 1, plus il est élevé, plus les doubles choix de mobilité perdent des places dans le nouveau classement.
+
+    Returns:
+        df_res: le df des étudiants trié selon la priorité calculée.
+    """    
+
+    total_etudiants = len(df_etudiants)
+
+    # Calcul du rang basé sur l'index (commençant à 1 pour que le major ait rang = 1)
+    df_etudiants['Rang'] = df_etudiants.index + 1
+
+    # Calcul du nombre de semestres demandés
+    df_etudiants['Nb_semestres_demandes'] = df_etudiants[['Choix S8', 'Choix S9']].apply(
+        lambda row: int(bool(row['Choix S8'])) + int(bool(row['Choix S9'])),
+        axis=1
+    )
+
+    # Calcul de la priorité
+    df_etudiants['Priorite'] = (df_etudiants['Rang'] / total_etudiants) + alpha * (df_etudiants['Nb_semestres_demandes'] - 1)
+
+    # Ajout d'un index original (optionnel ici car rang = index + 1)
+    df_etudiants['Index_original'] = df_etudiants.index
+
+    # Tri final
+    df_etudiants_sorted = df_etudiants.sort_values(by=['Priorite', 'Index_original'], ascending=[True, True])
+
+    return df_etudiants_sorted
+
 
 def traitement_scenario_hybride(df_univ:pd.DataFrame, df_etudiants:pd.DataFrame, limite_ordre:int=0, calcul_completion:str="Taux"):
     """Retourne un df correspondant aux affectations de chaque étudiant 

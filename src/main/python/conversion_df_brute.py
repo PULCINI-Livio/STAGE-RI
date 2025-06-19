@@ -5,7 +5,7 @@ import numpy as np
 from excel_en_dataframe import charger_excels
 
 def conversion_df_brute_pour_affectation(dataframes:dict) -> dict:
-    """Converti un dictionnaire composé de 4 dataframe issue des excels (1 sur les étudiants, 3 pour chaque partenaire par semestre) en un dictionnaire de 2 df, celui des univ et celui du choix des étudiants.
+    """Converti un dictionnaire composé de 3 dataframe issue des excels (1 sur les étudiants, 2 pour chaque partenaire par semestre) en un dictionnaire de 2 df, celui des univ et celui du choix des étudiants.
     
     Args:
         dataframes: le dictionnaire contenant tous les dataframes issus des excels.
@@ -41,14 +41,13 @@ def recup_dict_df_partner(dataframes:dict) -> dict:
     return res
 
 def fusion_df_partner(dict_df:dict):
-    """Fusionne les 3 df partner_SX du dictionnaire fourni en un seul df avec les colonnes Nom, Places SX, Places Prises SX, Specialites Compatibles SX.
+    """Fusionne les 2 df partner_SX du dictionnaire fourni en un seul df avec les colonnes Nom, Places SX, Places Prises SX, Specialites Compatibles SX.
     
     Keyword arguments:
-    df -- Le dictionnaire des dataframes lié au univsersités partenaire, il y en a un par semestre (3)
-    Return: un dataframe avec les colonnes Nom, Places S8, Places S9, Places S10
+    df -- Le dictionnaire des dataframes lié au univsersités partenaire, il y en a un par semestre (2)
+    Return: un dataframe avec les colonnes Nom, Places S8, Places S9
     """
-    # On récupère la liste des noms des partenaires dans le premier df
-    semestres = ["S8", "S9", "S10"]
+    semestres = ["S8", "S9"]
     specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
     
     # Récupère les noms des partenaires depuis l'un des DataFrames
@@ -71,16 +70,23 @@ def fusion_df_partner(dict_df:dict):
             axis=1
         )
 
+        # Université prioritaire ou non
+        data[f"Prioritaire {semestre}"] = df[f"Prioritaire"].tolist()
+
+        # Université prioritaire ou non
+        data[f"Note Min {semestre}"] = df[f"Note Min"].tolist()
+
     return pd.DataFrame(data)
 
 
 test = False
 if test :
     start = time.time()
-    dataframes_test = charger_excels("data")
+    dataframes_test = charger_excels("src\\main\\data")
     
-    test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
+    df_test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
+    
     end = time.time()
     print(f"Temps d'exécution : {end - start:.2f} secondes")
-    print(test)
-    test['universites_partenaires'].to_excel("df_univ.xlsx") 
+    print(df_test)
+    df_test["universites_partenaires"].to_excel("src\\main\\output\\universites_partenaires.xlsx", index=False)

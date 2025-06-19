@@ -41,7 +41,6 @@ if test:
     # Chemin du dossier contenant les fichiers Excel
     dossier = r"src\\main\\data"  
     
-    print("affichage des prints")
     dataframes = charger_excels(dossier)
     dataframes["partner_S8"].to_excel("src\\main\\output\\partner_S8.xlsx", index=False)
     print(dataframes.keys())

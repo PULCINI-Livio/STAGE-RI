@@ -48,7 +48,7 @@ def fusion_df_partner(dict_df:dict):
     Return: un dataframe avec les colonnes Nom, Places S8, Places S9
     """
     semestres = ["S8", "S9"]
-    specialites = ["MM", "MC", "MMT", "SNI", "BAT", "EIT", "IDU", "ESB", "AM"]
+    specialites = ["MM", "MC", "SNI", "BAT", "EIT", "IDU"]
     
     # Récupère les noms des partenaires depuis l'un des DataFrames
     noms_partenaires = dict_df[f"partner_{semestres[0]}"]["NOM DU PARTENAIRE"].str.strip()

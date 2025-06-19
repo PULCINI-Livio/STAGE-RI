@@ -139,9 +139,9 @@ def test_get_universite_la_moins_remplie():
     assert get_universite_la_moins_remplie(dataframe_univ, ("AAAA", "BBBB"), "S9", "Taux") == "AAAA"
 
 def test_get_liste_univ_compatible():
-    liste_specialite = ['MM', 'MMT', 'SNI', 'BAT', 'EIT', 'IDU', 'ESB', 'AM']
-    liste_specialite_sans_IDU = ['MM', 'MMT', 'SNI', 'BAT', 'EIT', 'ESB', 'AM']
-    liste_specialite_sans_SNI = ['MM', 'MMT', 'BAT', 'EIT', 'IDU', 'ESB', 'AM']
+    liste_specialite = ['MM', 'SNI', 'BAT', 'EIT', 'IDU']
+    liste_specialite_sans_IDU = ['MM', 'SNI', 'BAT', 'EIT']
+    liste_specialite_sans_SNI = ['MM', 'BAT', 'EIT', 'IDU']
     dataframe_univ = pd.DataFrame({
         "NOM DU PARTENAIRE": ["AAAA","BBBB"],
         "Places S8": [8, 10],
@@ -248,8 +248,8 @@ def test_get_depuis_liste_univ_prioritaire_avec_place_et_niveau():
 
 def test_get_depuis_df_univ_prioritaire_avec_place_niveau_spe():
     liste_univs = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH"]
-    liste_specialite = ['MM', 'MMT', 'SNI', 'BAT', 'EIT', 'IDU', 'ESB', 'AM']
-    liste_specialite_sans_IDU = ['MM', 'MMT', 'SNI', 'BAT', 'EIT', 'ESB', 'AM']
+    liste_specialite = ['MM', 'SNI', 'BAT', 'EIT', 'IDU']
+    liste_specialite_sans_IDU = ['MM', 'SNI', 'BAT', 'EIT']
     dataframe_univ = pd.DataFrame({
         "NOM DU PARTENAIRE": liste_univs,
         "Places S8": [2, 2, 2, 2, 2, 2, 2, 2],

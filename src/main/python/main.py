@@ -17,6 +17,13 @@ app.title("Algorithme D'affectation")
 app.geometry("800x500")
 app.resizable(False, False)
 
+# Nettoyage du dossier data_test au démarrage
+dossier_data_test = Path("src/main/data_test")
+if dossier_data_test.exists():
+    for f in dossier_data_test.iterdir():
+        if f.is_file():
+            f.unlink()
+
 # Variables
 chemins = [None, None]  # [0] univ, [1] étudiants
 labels = []
@@ -153,10 +160,11 @@ def traiter():
         dossier_upload.mkdir(exist_ok=True)
 
         chemins_copies = []
+        noms_fichiers = ["univ_data_mobility.xlsx", "choix_etudiants.xlsx"]  # ordre important : [0]=univ, [1]=étudiants
 
-        for chemin_source in chemins:
-            nom_fichier = Path(chemin_source).name  # Récupère le nom original du fichier
-            chemin_copie = dossier_upload / nom_fichier
+        for i, chemin_source in enumerate(chemins):
+            ext = Path(chemin_source).suffix
+            chemin_copie = dossier_upload / noms_fichiers[i]
             shutil.copy(chemin_source, chemin_copie)
             chemins_copies.append(str(chemin_copie))
 

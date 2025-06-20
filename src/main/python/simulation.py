@@ -15,7 +15,7 @@ df_etu_fictif = tri_df_etudiant_semestre_ponderation(df_etu_fictif, alpha=0.1)
 df_final = traitement_scenario_hybride(df_univ, df_etu_fictif, limite_ordre=1)
 df_univ.to_excel("src\\main\\output\\df_univ.xlsx", index=False)
 df_final.to_excel("src\\main\\output\\df_etu_fictif_final.xlsx", index=False)
-comparaison_taux_completion_prio_non_prio(df_univ)
+#comparaison_taux_completion_prio_non_prio(df_univ)
 
 ###########################################
 test = False

@@ -413,7 +413,11 @@ def traiter_etudiant_semestre(row, df_univ, semestre, limite_ordre, calcul_compl
     tuple_choix = getattr(row, col_choix, None)
     note_etudiant = getattr(row, "Note", None)
 
-    if not tuple_choix or not isinstance(tuple_choix, tuple):
+    if (
+        not tuple_choix
+        or not isinstance(tuple_choix, tuple)
+        or all(not str(choix).strip() for choix in tuple_choix)
+    ):
         logger_general.info(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
         logger_debug.debug(f"{id_etudiant} n'a pas fait de choix pour le {semestre}")
         return np.nan

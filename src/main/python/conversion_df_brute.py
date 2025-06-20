@@ -1,7 +1,5 @@
 from collections import defaultdict
-import time
 import pandas as pd
-import numpy as np
 from excel_en_dataframe import charger_excels
 
 def conversion_df_brute_pour_affectation(dataframes:dict) -> dict:

@@ -42,7 +42,6 @@ if test:
     dossier = r"src\\main\\data"  
     
     dataframes = charger_excels(dossier)
-    dataframes["partner_S8"].to_excel("src\\main\\output\\partner_S8.xlsx", index=False)
     print(dataframes.keys())
     # Afficher les 5 premières lignes de chaque DataFrame
     for nom, df in dataframes.items():

@@ -39,7 +39,7 @@ def test_semestre_est_valide():
 
 def test_get_nombre_places_total():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [1],
         "Places Prises S8": [1],
         "Places S9": [0],
@@ -53,7 +53,7 @@ def test_get_nombre_places_total():
 
 def test_get_nombre_places_prises():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [1],
         "Places Prises S8": [1],
         "Places S9": [0],
@@ -67,7 +67,7 @@ def test_get_nombre_places_prises():
 
 def test_place_est_disponible():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [2],
         "Places Prises S8": [1],
         "Places S9": [1],
@@ -81,7 +81,7 @@ def test_place_est_disponible():
 
 def test_incrementer_places_prise():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [2],
         "Places Prises S8": [1],
         "Places S9": [1],
@@ -100,7 +100,7 @@ def test_incrementer_places_prise():
 
 def test_get_nb_places_disponibles():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [2],
         "Places Prises S8": [1],
         "Places S9": [1],
@@ -114,7 +114,7 @@ def test_get_nb_places_disponibles():
 
 def test_get_taux_completion_places():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Places S8": [2],
         "Places Prises S8": [1],
         "Places S9": [1],
@@ -128,7 +128,7 @@ def test_get_taux_completion_places():
 
 def test_get_universite_la_moins_remplie():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA", "BBBB"],
+        "nom_partenaire": ["AAAA", "BBBB"],
         "Places S8": [2, 10],
         "Places Prises S8": [1, 2],
         "Places S9": [1, 1],
@@ -143,7 +143,7 @@ def test_get_liste_univ_compatible():
     liste_specialite_sans_IDU = ['MM', 'SNI', 'BAT', 'EIT']
     liste_specialite_sans_SNI = ['MM', 'BAT', 'EIT', 'IDU']
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA","BBBB"],
+        "nom_partenaire": ["AAAA","BBBB"],
         "Places S8": [8, 10],
         "Places Prises S8": [1, 1],
         "Specialites Compatibles S8": [liste_specialite, liste_specialite_sans_IDU],
@@ -158,7 +158,7 @@ def test_get_liste_univ_compatible():
 
 def test_etudiant_a_niveau_requis():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA"],
+        "nom_partenaire": ["AAAA"],
         "Note Min S8": [16],
         "Note Min S9": [np.nan],
     })
@@ -171,7 +171,7 @@ def test_etudiant_a_niveau_requis():
 def test_get_depuis_liste_univs_au_niveau():
     liste_univs = ["AAAA", "BBBB", "CCCC"]  
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": liste_univs,
+        "nom_partenaire": liste_univs,
         "Note Min S8": [18, 16, np.nan],
         "Note Min S9": [np.nan, np.nan, np.nan],
     })
@@ -184,21 +184,21 @@ def test_get_depuis_liste_univs_au_niveau():
 def test_scinder_liste_univ_par_prio():
     liste_univs = ["AAAA", "BBBB", "CCCC", "DDDD"]  
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA", "BBBB", "CCCC", "DDDD"],
+        "nom_partenaire": ["AAAA", "BBBB", "CCCC", "DDDD"],
         "Prioritaire S8": ["Oui", "Non", "Non", "Non"],
         "Prioritaire S9": ["Non", "Non", "Non", "Non"],
     })
     assert scinder_liste_univ_par_prio(dataframe_univ, liste_univs, semestre="S8") == (["AAAA"], ["BBBB", "CCCC", "DDDD"])
     assert scinder_liste_univ_par_prio(dataframe_univ, liste_univs, semestre="S9") == ([], ["AAAA", "BBBB", "CCCC", "DDDD"])
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA", "BBBB", "CCCC", "DDDD"],
+        "nom_partenaire": ["AAAA", "BBBB", "CCCC", "DDDD"],
         "Prioritaire S8": ["Oui", "Oui", "Oui", "Oui"],
     })
     assert scinder_liste_univ_par_prio(dataframe_univ, liste_univs, semestre="S8") == (["AAAA", "BBBB", "CCCC", "DDDD"], [])
 
 def test_get_depuis_df_univs_avec_place():
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA","BBBB"],
+        "nom_partenaire": ["AAAA","BBBB"],
         "Places S8": [1, 2],
         "Places Prises S8": [0, 1],
         "Places S9": [2, 2],
@@ -207,7 +207,7 @@ def test_get_depuis_df_univs_avec_place():
     assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S8") == ["AAAA","BBBB"]
     assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S9") == ["AAAA"]
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": ["AAAA","BBBB"],
+        "nom_partenaire": ["AAAA","BBBB"],
         "Places S8": [1, 1],
         "Places Prises S8": [1, 1],
         "Places S9": [0, 0],
@@ -219,7 +219,7 @@ def test_get_depuis_df_univs_avec_place():
 def test_get_depuis_liste_univ_prioritaire_avec_place_et_niveau():
     liste_univs = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH"]
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": liste_univs,
+        "nom_partenaire": liste_univs,
         "Places S8": [2, 2, 2, 2, 2, 2, 2, 2],
         "Places Prises S8": [0, 0, 0, 2, 2, 0, 2, 2],
         "Prioritaire S8": ["Oui", "Oui", "Non", "Oui", "Non", "Non", "Oui" , "Non"],
@@ -251,7 +251,7 @@ def test_get_depuis_df_univ_prioritaire_avec_place_niveau_spe():
     liste_specialite = ['MM', 'SNI', 'BAT', 'EIT', 'IDU']
     liste_specialite_sans_IDU = ['MM', 'SNI', 'BAT', 'EIT']
     dataframe_univ = pd.DataFrame({
-        "NOM DU PARTENAIRE": liste_univs,
+        "nom_partenaire": liste_univs,
         "Places S8": [2, 2, 2, 2, 2, 2, 2, 2],
         "Places Prises S8": [0, 0, 0, 2, 2, 0, 2, 0],
         "Specialites Compatibles S8": [liste_specialite] * 7 + [liste_specialite_sans_IDU],

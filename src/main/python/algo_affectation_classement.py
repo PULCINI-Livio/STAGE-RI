@@ -9,14 +9,14 @@ import logging
 # Logger général
 logger_general = logging.getLogger('general')
 logger_general.setLevel(logging.INFO)
-fh_general = logging.FileHandler('log.txt', mode='a')
+fh_general = logging.FileHandler('log.txt', mode='w')
 fh_general.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger_general.addHandler(fh_general)
 
 # Logger spécifique pour le taux
 logger_debug = logging.getLogger('taux')
 logger_debug.setLevel(logging.DEBUG)
-fh_taux = logging.FileHandler('log_debug.txt', mode='a')
+fh_taux = logging.FileHandler('log_debug.txt', mode='w')
 fh_taux.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger_debug.addHandler(fh_taux)
 
@@ -129,7 +129,7 @@ def get_nombre_places_total(df:pd.DataFrame, nom_du_partenaire:str, semestre:str
 
     if not semestre_est_valide(semestre):
         return None
-    places = df.loc[df["NOM DU PARTENAIRE"] == nom_du_partenaire, "Places "+str(semestre)]
+    places = df.loc[df["nom_partenaire"] == nom_du_partenaire, "Places "+str(semestre)]
     if places.empty:
         return None
     val = places.iloc[0]
@@ -156,7 +156,7 @@ def get_nombre_places_prises(df:pd.DataFrame, nom_du_partenaire:str, semestre:st
     
     if not semestre_est_valide(semestre):
         return None
-    places = df.loc[df["NOM DU PARTENAIRE"] == nom_du_partenaire, "Places Prises "+str(semestre)]
+    places = df.loc[df["nom_partenaire"] == nom_du_partenaire, "Places Prises "+str(semestre)]
     if places.empty:
         return None
     val = places.iloc[0]
@@ -192,7 +192,7 @@ def incrementer_places_prise(df_univ:pd.DataFrame, nom_du_partenaire:str, semest
 
     """
     # Filtrage des lignes correspondantes
-    mask = df_univ["NOM DU PARTENAIRE"] == nom_du_partenaire
+    mask = df_univ["nom_partenaire"] == nom_du_partenaire
 
     if mask.any() and semestre_est_valide(semestre):
         idx = df_univ[mask].index[0]  # Prend la première ligne correspondante
@@ -225,7 +225,7 @@ def get_taux_completion_places(df_univ:pd.DataFrame, nom_du_partenaire:str, seme
 def comparaison_taux_completion_prio_non_prio(df_univ):
     res = []
     semestre = "S8"
-    liste_univs = df_univ["NOM DU PARTENAIRE"].tolist()
+    liste_univs = df_univ["nom_partenaire"].tolist()
     liste_prio, liste_non_prio = scinder_liste_univ_par_prio(df_univ, liste_univs, semestre)
     taux_moyen_prio = 0
     taux_moyen_non_prio = 0
@@ -288,7 +288,7 @@ def get_liste_univ_compatible(df_univ:pd.DataFrame, semestre:str, specialite:str
     
     col = f"Specialites Compatibles {semestre}"
     mask = df_univ[col].apply(lambda lst: specialite in lst if isinstance(lst, list) else False)
-    return df_univ.loc[mask, "NOM DU PARTENAIRE"].tolist()
+    return df_univ.loc[mask, "nom_partenaire"].tolist()
 
 def get_depuis_df_univ_prioritaire_avec_place_niveau_spe(df_univ:pd.DataFrame, note_etudiant:int, semestre:str, specialite:str, calcul_completion:str="Taux"):
     """Retourne le nom de l'université qui est la moins remplie en considérant d'abord les univ prioritaire.
@@ -323,7 +323,7 @@ def scinder_liste_univ_par_prio(df_univ, liste_choix, semestre):
     liste_non_prioritaires = []
     
     for nom in liste_choix:
-        ligne = df_univ[df_univ["NOM DU PARTENAIRE"] == nom]
+        ligne = df_univ[df_univ["nom_partenaire"] == nom]
         if not ligne.empty:
             prioritaire = ligne.iloc[0][f"Prioritaire {semestre}"]
             if isinstance(prioritaire, str) and prioritaire.strip().lower() == "oui":
@@ -400,7 +400,7 @@ def etudiant_a_niveau_requis(df_univ:pd.DataFrame, note_etudiant:float, nom_du_p
         res: True si l'étudiant a le niveau requis ou qu'aucun niveau n'est précisé, False le cas échéant.
     """
     res = True
-    note_min_univ = df_univ.loc[df_univ["NOM DU PARTENAIRE"] == nom_du_partenaire, "Note Min "+str(semestre)]
+    note_min_univ = df_univ.loc[df_univ["nom_partenaire"] == nom_du_partenaire, "Note Min "+str(semestre)]
     note_min_valeur = note_min_univ.values[0] if not note_min_univ.empty else None
     if note_min_valeur is not None and not pd.isna(note_min_valeur) and note_min_valeur > note_etudiant:
         res = False

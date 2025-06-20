@@ -19,7 +19,6 @@ from algo_affectation_classement import (
     get_liste_univ_compatible,
     get_depuis_df_univ_prioritaire_avec_place_niveau_spe,
     scinder_liste_univ_par_prio,
-    get_depuis_df_univs_avec_place,
     get_depuis_liste_univs_au_niveau,
     get_depuis_liste_univ_prioritaire_avec_place_et_niveau,
     etudiant_a_niveau_requis
@@ -195,26 +194,6 @@ def test_scinder_liste_univ_par_prio():
         "Prioritaire S8": ["Oui", "Oui", "Oui", "Oui"],
     })
     assert scinder_liste_univ_par_prio(dataframe_univ, liste_univs, semestre="S8") == (["AAAA", "BBBB", "CCCC", "DDDD"], [])
-
-def test_get_depuis_df_univs_avec_place():
-    dataframe_univ = pd.DataFrame({
-        "nom_partenaire": ["AAAA","BBBB"],
-        "Places S8": [1, 2],
-        "Places Prises S8": [0, 1],
-        "Places S9": [2, 2],
-        "Places Prises S9": [1, 2],
-    })
-    assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S8") == ["AAAA","BBBB"]
-    assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S9") == ["AAAA"]
-    dataframe_univ = pd.DataFrame({
-        "nom_partenaire": ["AAAA","BBBB"],
-        "Places S8": [1, 1],
-        "Places Prises S8": [1, 1],
-        "Places S9": [0, 0],
-        "Places Prises S9": [0, 0],
-    })
-    assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S8") == []
-    assert get_depuis_df_univs_avec_place(dataframe_univ, semestre="S9") == []
 
 def test_get_depuis_liste_univ_prioritaire_avec_place_et_niveau():
     liste_univs = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH"]

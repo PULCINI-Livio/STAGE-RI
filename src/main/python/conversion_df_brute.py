@@ -56,9 +56,9 @@ def traitement_df_univ(df:pd.DataFrame):
 
     return pd.DataFrame(data)
 
-test = True
+test = False
 if test :
-    dataframes_test = charger_excels("src\\main\\data")
+    dataframes_test = charger_excels("src\\main\\data_for_test")
     
     df_test = conversion_df_brute_pour_affectation(dataframes=dataframes_test)
     

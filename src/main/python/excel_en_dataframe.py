@@ -39,7 +39,7 @@ test = False
 
 if test:
     # Chemin du dossier contenant les fichiers Excel
-    dossier = r"src\\main\\data"  
+    dossier = r"src\\main\\data_for_test"  
     
     dataframes = charger_excels(dossier)
     print(dataframes.keys())

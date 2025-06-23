@@ -4,7 +4,7 @@ from algo_affectation_classement import traitement_scenario_hybride, generer_df_
 from conversion_df_brute import conversion_df_brute_pour_affectation
 from excel_en_dataframe import charger_excels
 
-dataframes = charger_excels("src\\main\\data")
+dataframes = charger_excels("src\\main\\data_for_test")
 df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
 
 df_etu_fictif = generer_df_choix_etudiants_spe_compatible(10, df_univ, proba_un_seul_semestre=0.2)
@@ -24,7 +24,7 @@ if test:
     proba_unique_semestre = 0.0
     start = time.time()
     limite_ordre = 0
-    dataframes = charger_excels("src\\main\\data")
+    dataframes = charger_excels("src\\main\\data_for_test")
 
     df_univ = conversion_df_brute_pour_affectation(dataframes)["universites_partenaires"]
     #df_etu_fictif = generer_df_choix_etudiants_spe_compatible(nb_etudiants, df_univ, proba_unique_semestre)

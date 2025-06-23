@@ -17,8 +17,8 @@ app.title("Algorithme D'affectation")
 app.geometry("800x500")
 app.resizable(False, False)
 
-# Nettoyage du dossier data_test au démarrage
-dossier_data_test = Path("src/main/data_test")
+# Nettoyage du dossier data au démarrage
+dossier_data_test = Path("src/main/data")
 if dossier_data_test.exists():
     for f in dossier_data_test.iterdir():
         if f.is_file():
@@ -91,7 +91,13 @@ label2.pack(side="left", expand=True, fill="x", padx=(10, 10))
 
 labels.append(label2)
 
-
+label_info = ctk.CTkLabel(
+    app,
+    text="Pour commencer, charger les fichiers excel 'Universités' et 'Etudiant', des exemples téléchargeables sont disponibles.\nUne fois les fichiers chargés, vous pouvez appuyer sur le bouton 'Traiter les fichiers'.\nVous serez invité à enregistrer le fichier excel qui contient les affectations des étudiants.",
+    font=("Arial", 14),
+    text_color="gray"
+)
+label_info.pack(pady=10)
 # Sliders
 
 # Variables pour les sliders
@@ -133,7 +139,7 @@ limite_value_label.pack(side="left", padx=10)
 
 label_info = ctk.CTkLabel(
     app,
-    text="Nombre de voeux ordonnés définit le nombre de voeux traité selon l'ordre donnés par l'étudiant.\nPassé cette valeur, les voeux seront choisit selon l'importance de l'université et le taux de place prises. \nLe coefficient de pénalité est entre 0 et 1, plus il est élevé, plus les doubles choix de mobilité\nperdent des places dans le classement.",
+    text="Le coefficient de pénalité est entre 0 et 1, plus il est élevé, plus les doubles choix de mobilité\nperdent des places dans le classement.\nNombre de voeux ordonnés définit le nombre de voeux traité selon l'ordre donnés par l'étudiant.\nPassé cette valeur, les voeux seront choisit selon l'importance de l'université et le taux de place prises.",
     font=("Arial", 14),
     text_color="gray"
 )
@@ -144,7 +150,7 @@ def traitement_personnalise():
     try:
         alpha = alpha_var.get()
         limite_ordre = limite_ordre_var.get()
-        dataframes = charger_excels("src\\main\\data_test")
+        dataframes = charger_excels("src\\main\\data")
         dataframes_convertis = conversion_df_brute_pour_affectation(dataframes)
         df_univ = dataframes_convertis["universites_partenaires"]
         df_etu = dataframes_convertis["choix_etudiants"]
@@ -156,7 +162,7 @@ def traitement_personnalise():
 
 def traiter():
     try:
-        dossier_upload = Path("src\\main\\data_test")
+        dossier_upload = Path("src\\main\\data")
         dossier_upload.mkdir(exist_ok=True)
 
         chemins_copies = []

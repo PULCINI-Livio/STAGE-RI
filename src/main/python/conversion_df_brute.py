@@ -1,6 +1,6 @@
 from collections import defaultdict
 import pandas as pd
-from excel_en_dataframe import charger_excels
+from src.main.python.excel_en_dataframe import charger_excels
 
 def conversion_df_brute_pour_affectation(dataframes:dict) -> dict:
     """Traite les dataframes du dictionnaire en entré pour que leur colonnes soit adapté à l'algorithme d'affectation.

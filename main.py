@@ -4,9 +4,9 @@ import os
 import shutil
 from pathlib import Path
 
-from algo_affectation_classement import tri_df_etudiant_semestre_ponderation, traitement_scenario_hybride
-from conversion_df_brute import conversion_df_brute_pour_affectation
-from excel_en_dataframe import charger_excels
+from src.main.python.algo_affectation_classement import tri_df_etudiant_semestre_ponderation, traitement_scenario_hybride
+from src.main.python.conversion_df_brute import conversion_df_brute_pour_affectation
+from src.main.python.excel_en_dataframe import charger_excels
 
 # App setup
 ctk.set_appearance_mode("System")

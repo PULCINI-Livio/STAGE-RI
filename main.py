@@ -8,6 +8,14 @@ from src.main.python.algo_affectation_classement import tri_df_etudiant_semestre
 from src.main.python.conversion_df_brute import conversion_df_brute_pour_affectation
 from src.main.python.excel_en_dataframe import charger_excels
 
+import sys
+
+# Définit le bon dossier de base, même depuis un .exe
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys._MEIPASS) / "src" / "main"
+else:
+    BASE_DIR = Path(__file__).resolve().parent / "src" / "main"
+
 # App setup
 ctk.set_appearance_mode("System")
 #ctk.set_default_color_theme("blue")
@@ -18,7 +26,7 @@ app.geometry("800x500")
 app.resizable(False, False)
 
 # Nettoyage du dossier data au démarrage
-dossier_data_test = Path("src/main/data")
+dossier_data_test = BASE_DIR / "data"
 if dossier_data_test.exists():
     for f in dossier_data_test.iterdir():
         if f.is_file():
@@ -42,7 +50,7 @@ def verifier_fichiers():
 
 def telecharger_fichier_exemple(nom_fichier_source):
     try:
-        dossier_source = Path("src/main/data_exemple")
+        dossier_source = BASE_DIR / "data_exemple"
         chemin_source = dossier_source / nom_fichier_source
 
         save_path = filedialog.asksaveasfilename(
@@ -150,7 +158,7 @@ def traitement_personnalise():
     try:
         alpha = alpha_var.get()
         limite_ordre = limite_ordre_var.get()
-        dataframes = charger_excels("src\\main\\data")
+        dataframes = charger_excels(str(BASE_DIR / "data"))
         dataframes_convertis = conversion_df_brute_pour_affectation(dataframes)
         df_univ = dataframes_convertis["universites_partenaires"]
         df_etu = dataframes_convertis["choix_etudiants"]
@@ -162,7 +170,7 @@ def traitement_personnalise():
 
 def traiter():
     try:
-        dossier_upload = Path("src\\main\\data")
+        dossier_upload = Path(str(BASE_DIR / "data"))
         dossier_upload.mkdir(exist_ok=True)
 
         chemins_copies = []

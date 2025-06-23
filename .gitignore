@@ -5,3 +5,7 @@ log.txt
 *.png
 log_taux.txt
 log_debug.txt
+/venv
+/build
+/dist
+*.spec

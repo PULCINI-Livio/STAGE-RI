@@ -469,10 +469,12 @@ def tri_df_etudiant_semestre_ponderation(df_etudiants:pd.DataFrame, alpha=0.05):
     df_etudiants['Rang'] = df_etudiants.index + 1
 
     # Calcul du nombre de semestres demandés
-    df_etudiants['Nb_semestres_demandes'] = df_etudiants[['Choix S8', 'Choix S9']].apply(
-        lambda row: int(bool(row['Choix S8'])) + int(bool(row['Choix S9'])),
-        axis=1
+    df_etudiants['Nb_semestres_demandes'] = (
+        df_etudiants[['Choix S8', 'Choix S9']]
+        .notna()
+        .sum(axis=1)
     )
+    print(df_etudiants['Nb_semestres_demandes'])
 
     # Calcul de la priorité
     df_etudiants['Priorite'] = (df_etudiants['Rang'] / total_etudiants) + alpha * (df_etudiants['Nb_semestres_demandes'] - 1)
